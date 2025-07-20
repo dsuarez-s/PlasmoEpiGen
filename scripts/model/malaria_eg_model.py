@@ -3,50 +3,42 @@ import numpy as np
 import random
 import os
 from scipy import sparse
-from scripts.transitions.mosquitoes_events import *
-from scripts.transitions.humans_events import *
-from scripts.recombination.recombination import *
+from scripts.genetics.recombination.genome_initialization import initialize_genomes
+from scripts.transitions.calculate_forces import compute_propensities
 
+
+"""
+sigma_h:   Number of bites per mosquito
+gamma:     Recovery time of a human from infection
+delta:     Lifespan of mosquitoes
+alpha_H:   Maturation time of gametocytes in humans
+alpha_M:   Maturation time of sporozoites in mosquitoes
+sigma_v:   Rate of gonotrophic cycle (mosquito feeding cycle)
+beta_hv:   Probability of transmission from mosquito to human
+beta_vh:   Probability of transmission from human to mosquito
+xi:        Lifespan of parasites in mosquito salivary glands
+"""
+    
 class MalariaEGModel:
-    def __init__(self, epi_parameters, pop_parameters, name_folder, size_pool, iteration, distribution):
+    def __init__(self, epi_parameters, pop_parameters,
+                 name_folder, size_pool, iteration, distribution, genomes,
+                 clone_distribution_human, clone_distribution_mosquito):
         
         # Initialize model parameters #
-        self.name_folder = name_folder
-        self.size_pool = size_pool
-        self.iteration = iteration
-        self.distribution = distribution
-
-        # Epidemiological parameters #
-        self.sigma_h = epi_parameters[0] # Number of bites #
-        self.gamma = epi_parameters[1] # Recovery time of a human from an infection #
-        self.delta = epi_parameters[2] # Lifespam of mosquitoes #
-
-        # Parasite and Mosquito cycle parameters #
-        self.alpha_H = epi_parameters[3] # Human Infection: Maturation of Gametocytes #
-        self.alpha_M = epi_parameters[4] # Mosquito Infection: Maturation of Sporozoites #
-        self.sigma_v = epi_parameters[5] # Gonotrophic Cycle #
-        self.beta_hv = epi_parameters[6] # Prob. Human Infection from Vector # 
-        self.beta_vh = epi_parameters[7] # Prob. Vector Infection from Human #
-        self.xi = epi_parameters[8] # Lifespam of parasites in salivary glands #      
+        self.config = {"name_folder": name_folder,"size_pool": size_pool,
+                       "iteration": iteration, "distribution": distribution}
+        
+        # Initialize epidemiological  parameters #
+        epi_keys = ["sigma_h", "gamma", "delta", "alpha_H", "alpha_M", "sigma_v", "beta_hv", "beta_vh", "xi"]  
+        self.epi = {key: val for key, val in zip(epi_keys, epi_parameters)}   
 
         # Time and state counters #
         self.t = 0
         self.HS, self.HM, self.HPC = 0, 1, 2
         self.MS, self.MC, self.MPC = 3, 4, 5
 
-        # Population sizes #
-        self.Hum_Pop = int(pop_parameters[0]) # Number of Humans #
-        self.Mos_Pop = int(pop_parameters[1]) # Number of Mosquitoes #
-        
-        HM_init = int(self.Hum_Pop*pop_parameters[2])  # Initial number of Monoclonal infected humans #
-        HPC_init = int(self.Hum_Pop*pop_parameters[3]) # Initial number of Policlonal infected humans #
-        HS_init = self.Hum_Pop - HM_init - HPC_init    # Initial number of Suceptible humans #
-        
-        MC_init = int(self.Mos_Pop*pop_parameters[4])  # Initial number of Monoclonal infected mosquitoes #
-        MPC_init = int(self.Mos_Pop*pop_parameters[5]) # Initial number of Policlonal infected mosquitoes #
-        MS_init = self.Mos_Pop - MC_init - MPC_init    # Initial number of Suceptible mosquitoes #
-        
-        assert HS_init >= 0 and MS_init >= 0, "Initial population fractions exceed total population."
+        # Initiliaze Populations #  
+        self.pop = initialize_population_counts(pop_parameters)
 
         # Agent state vector #
         self.X = np.array([self.HS] * HS_init + [self.HM] * HM_init + [self.HPC] * HPC_init + 
@@ -58,11 +50,25 @@ class MalariaEGModel:
         self.events = ["lambda_humans", "lambda_mosquitoes", "toMS"]
         self.generation_events = 0
         self.total_events = 0
+        
+    def initalize_genomes(self):
+        
+        init_genomes = initialize_genomes(X = self.X, gamma = self.gamma , xi = self.xi,
+                                          genomes_dictionary = genomes,
+                                          HM_code = self.HM, HPC_code = self.HPC,
+                                          MC_code = self.MC, MPC_code = self.MPC,
+                                          clone_distribution_human = clone_distribution_human,
+                                          clone_distribution_mosquito = clone_distribution_mosquito)
+        
+        self.parasitic_populations = init_genomes[0]
+        self.genomes_matrix = init_genomes[1]
+        self.pre_genomes_matrix = init_genomes[2]
     
-    #############################
-    ### Continue Here Working ### 
-    #############################
-    
+    def calculate_forces(self):
+        self.propensities = compute_propensities(X = self.X, Hum_Pop = self.Hum_Pop, Mos_Pop = self.Mos_Pop,
+                                                 sigma_v = self.sigma_v, sigma_h = self.sigma_h,
+                                                 beta_hv = self.beta_hv, beta_vh = self.beta_vh,
+                                                 delta = self.delta)
     def next_time_event(self):
         # Determine next event and time increment #
         total = self.propensities.sum()
@@ -136,12 +142,11 @@ class MalariaEGModel:
     def run(self, tmax, genomes):
         # Run the full simulation up to tmax #
         time_step = 1
-        self.initial_genomes(genomes)
         self.calculate_forces()
-        self.save_information(0, 0, self.genomes_matrix.shape[0])
+        
+        #self.save_information(0, 0, self.genomes_matrix.shape[0])
 
         while self.t < tmax:
-            print(self.parasitic_populations)
             self.calculate_forces()
             self.next_time_event()
             self.variate_population()
