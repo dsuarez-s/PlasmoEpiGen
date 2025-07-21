@@ -1,113 +1,175 @@
 import numpy as np  # for numerical operations
 import random       # for sampling and shuffling
 from scipy import sparse  # for memory-efficient sparse matrices
+import heapq
 
 # -------------------------------------------------------------------------------------------------------- #
 # Assign clone counts per agent based on provided distribution #
-def assign_clones(distribution, num_agents):
+def assign_clones(distribution, num_agents, max_haplotypes):
+    
+    # 1) Validate that the sum of proportions is close to 1.0 #
+    total = sum(distribution.values())
+    if not np.isclose(total, 1.0, atol=1e-3):
+        raise ValueError(f"Sum of proportions = {total:.3f}, must be 1.0")
+
+    # 2) Validate that requested clone count does not exceed available haplotypes #
+    for n_clones, prop in distribution.items():
+        if n_clones > max_haplotypes and prop > 0:
+            raise ValueError(f"Cannot assign {n_clones} clones (proportion {prop}); "
+                             f"only {max_haplotypes} haplotypes available.")
+
+    # 3) Initial rounding of clone counts #
     clone_counts = []
-
-    # Validate that the sum of proportions is approximately 1.0 #
-    total_proportion = sum(distribution.values())
-    if not np.isclose(total_proportion, 1.0, atol=1e-3):
-        raise ValueError(f"Clone distribution proportions must sum to 1.0, but got {total_proportion:.4f}.")
-
-    # Calculate how many agents should receive each clone count #
-    for clones, proportion in distribution.items():
-        count = int(round(proportion * num_agents))
+    for clones, prop in distribution.items():
+        count = int(round(prop * num_agents))
         clone_counts.extend([clones] * count)
 
-    # Raise an error if rounding over-assigns #
+    # 4) Ensure rounding does not exceed the total number of agents #
     if len(clone_counts) > num_agents:
-        raise ValueError("The total assigned proportion exceeds 1.0 after rounding. Please adjust the distribution.")
+        raise ValueError( f"Rounded clone counts ({len(clone_counts)}) exceed total agents ({num_agents}).")
 
-    # Fill remaining agents using weighted random sampling based on the original distribution #
+    # 5) Fill remaining agents using weighted random sampling #
+    keys, weights = zip(*distribution.items())
     while len(clone_counts) < num_agents:
-        clone_counts.append(
-            random.choices(list(distribution.keys()), weights=distribution.values())[0]
-        )
+        clone_counts.append(random.choices(keys, weights=weights)[0])
 
-    random.shuffle(clone_counts)  # Randomize the assignment order
-    return clone_counts
+    random.shuffle(clone_counts)
+    return np.array(clone_counts)
 
 # -------------------------------------------------------------------------------------------------------- #
 """
-Assign parasite genomes to infected agents based on clone distributions.
+Initialize parasite genome assignments for a simulated host and vector population
+based on specified clone distributions and genome sequences.
 
 Parameters:
-- X: Array of agent state codes.
-- gamma: Recovery time of a human from an infection.
-- xi: Lifespan of parasites in mosquito salivary glands.
-- genomes_dictionary: Mapping from genome ID to its sequence.
-- HM_code, HPC_code, MC_code, MPC_code: State codes for different infection types.
-- clone_distribution_human: Dictionary {num_clones: proportion} for human agents.
-- clone_distribution_mosquito: Dictionary {num_clones: proportion} for mosquito agents.
+- clone_distribution_human: dict {num_clones: proportion} specifying clone numbers for human agents.
+- clone_distribution_mosquito: dict {num_clones: proportion} specifying clone numbers for mosquito agents.
+- num_mos: int, number of mosquito agents.
+- num_hum: int, number of human agents.
+- genomes_dictionary: dict mapping genome ID to sequence (string or list of chars).
+- HS_code, HM_code, HPC_code: int codes for susceptible, monoclonal, and polyclonal humans.
+- MS_code, MC_code, MPC_code: int codes for susceptible, monoclonal, and polyclonal mosquitoes.
+- gamma: int or float, recovery time from human infection.
+- xi: int or float, parasite lifespan in mosquito salivary glands.
+- event_queue: heap queue to store scheduled parasite extinction events.
 
 Returns:
-- parasitic_populations: Array of genome sequences.
-- genomes_matrix: Sparse matrix (genomes x agents) with infection timers.
-- pre_genomes_matrix: Empty matrix with the same shape (used later in the simulation).
+- parasitic_populations: np.array of genome sequences used in the initialization.
+- mature_matrix: scipy.sparse matrix (genomes x agents) indicating assigned genomes.
+- immature_matrix: empty sparse matrix with the same shape (for future infection events).
+- X: np.array of agent epidemiological states (state codes for each agent).
 """
-def initialize_genomes(X, gamma, xi, genomes_dictionary,
-                       HM_code, HPC_code, MC_code, MPC_code,
-                       clone_distribution_human,
-                       clone_distribution_mosquito):
 
-    # Identify infected human and mosquito agents #
-    monoclonal_humans = np.where(X == HM_code)[0]
-    polyclonal_humans = np.where(X == HPC_code)[0]
-    monoclonal_mosquitoes = np.where(X == MC_code)[0]
-    polyclonal_mosquitoes = np.where(X == MPC_code)[0]
+def initialize_genomes(clone_distribution_human,clone_distribution_mosquito,
+                       num_mos,num_hum,genomes_dictionary,
+                       HS_code, HM_code, HPC_code,
+                       MS_code, MC_code, MPC_code,
+                       gamma, xi, event_queue):
 
-    infected_humans = np.concatenate([monoclonal_humans, polyclonal_humans])
-    infected_mosquitoes = np.concatenate([monoclonal_mosquitoes, polyclonal_mosquitoes])
-
-    # Determine number of clones each agent will carry #
-    human_clone_counts = assign_clones(clone_distribution_human, len(infected_humans))
-    mosquito_clone_counts = assign_clones(clone_distribution_mosquito, len(infected_mosquitoes))
-
-    # Total number of clones to assign #
+    # Assign the number of clones each human and mosquito agent will have #
+    human_clone_counts = assign_clones(clone_distribution_human, num_hum, len(genomes_dictionary))
+    mosquito_clone_counts = assign_clones(clone_distribution_mosquito, num_mos, len(genomes_dictionary))
+    X_counts = list(human_clone_counts)  + list(mosquito_clone_counts)
+    
+    # Assign epidemiological state codes for humans based on number of clones #
+    HS = (human_clone_counts == 0)*HS_code
+    HM = (human_clone_counts == 1)*HM_code
+    HPC = (human_clone_counts > 1)*HPC_code
+    
+    # Assign epidemiological state codes for mosquitoes based on number of clones #
+    MS = (mosquito_clone_counts == 0)*MS_code
+    MC = (mosquito_clone_counts == 1)*MC_code
+    MPC = (mosquito_clone_counts > 1)*MPC_code
+    
+    # Combine human and mosquito states into a single array #
+    human_states = HS + HM + HPC 
+    mosquitoes_states = MS + MC + MPC 
+    X_states = list(human_states) + list(mosquitoes_states)
+    X = np.array(X_states, dtype=int)
+        
+    # Calculate the total number of parasite clones that need to be assigned #
     total_clones = sum(human_clone_counts) + sum(mosquito_clone_counts)
-
-    # Ensure enough genomes are available for all clones #
     all_genomes = list(genomes_dictionary.keys())
-    while len(all_genomes) < total_clones:
-        all_genomes.extend(list(genomes_dictionary.keys()))
-    selected_genomes = random.sample(all_genomes, total_clones)
-
-    # Map unique genome IDs to row indices in the matrix #
+    num_haplotypes = len(all_genomes)
+    
+    # Select the genomes to assign to agents #
+    if total_clones > num_haplotypes:
+        selected_genomes = all_genomes
+    else:
+        selected_genomes = random.sample(all_genomes, total_clones)
+    
+    # Map genome IDs to their indices for matrix storage #
     unique_genomes = list(set(selected_genomes))
     genome_to_index = {genome: idx for idx, genome in enumerate(unique_genomes)}
+    
+    # Initialize sparse matrices for genome assignments in agents #
+    mature_matrix = sparse.lil_matrix((len(unique_genomes), len(X)), dtype=int)
+    immature_matrix = sparse.lil_matrix((len(unique_genomes), len(X)), dtype=int)
 
-    # Create sparse matrices to hold genome-agent associations #
-    num_genomes = len(unique_genomes)
-    genomes_matrix = sparse.lil_matrix((num_genomes, len(X)), dtype=int)
-    pre_genomes_matrix = sparse.lil_matrix((num_genomes, len(X)), dtype=int)
+   # Calculate total number of clones to assign and number of available genomes (usually defined above)
+    num_genomes = len(selected_genomes)
 
-    # Assign genomes to infected humans #
-    pos = 0
-    for agent, num_clones in zip(infected_humans, human_clone_counts):
-        for _ in range(num_clones):
-            genome = selected_genomes[pos]
-            row = genome_to_index[genome]
-            genomes_matrix[row, agent] = gamma
-            pos += 1
+    # CASE 1: Enough genomes for all clones, assign globally unique haplotypes (no repetitions at all) #
+    if total_clones <= num_genomes:
+        for position_agent in range(len(X_counts)):
+            num_clones = X_counts[position_agent]
+            agent_state = X[position_agent]
+            if num_clones > 0:
+                # Randomly sample haplotypes for this agent from the global pool
+                haplotypes = random.sample(selected_genomes, num_clones)
+                for genome in haplotypes:
+                    row = genome_to_index[genome]
+                    mature_matrix[row, position_agent] = 1
+                    # Remove from the global pool so it can't be assigned again #
+                    selected_genomes.remove(genome)  
 
-    # Assign genomes to infected mosquitoes #
-    for agent, num_clones in zip(infected_mosquitoes, mosquito_clone_counts):
-        for _ in range(num_clones):
-            genome = selected_genomes[pos]
-            row = genome_to_index[genome]
-            genomes_matrix[row, agent] = xi
-            pos += 1
+                    # Schedule a death event for each assigned haplotype
+                    type_event = "Death"
+                    agent = position_agent
+                    # Choose event time based on host type #
+                    if agent_state > HPC_code:
+                        # Mosquito: parasite lifespan in mosquito salivary glands #
+                        t_event = xi  
+                    else:
+                        # Human: recovery time #
+                        t_event = gamma  
+                    heapq.heappush(event_queue, (t_event, type_event, row, agent))
+    # CASE 2: Not enough genomes for global uniqueness, only guarantee unique clones per agent #
+    else:
+        for position_agent in range(len(X_counts)):
+            num_clones = X_counts[position_agent]
+            agent_state = X[position_agent]
+            if num_clones > 0:
+                # Assign unique haplotypes per agent, but allow reuse between agents #
+                haplotypes = random.sample(selected_genomes, num_clones)
+                for genome in haplotypes:
+                    row = genome_to_index[genome]
+                    mature_matrix[row, position_agent] = 1
+
+                    # Schedule a death event for each assigned haplotype #
+                    type_event = "Death"
+                    agent = position_agent
+                    # Choose event time based on host type #
+                    if agent_state > HPC_code:
+                        # Mosquito: parasite lifespan in mosquito salivary glands #
+                        t_event = xi  
+                    else:
+                        # Human: recovery time #
+                        t_event = gamma  
+                    heapq.heappush(event_queue, (t_event, type_event, row, agent))
 
     # Convert genome sequences to a NumPy array #
-    parasitic_populations = np.array([
-        "".join(genomes_dictionary[g]) if not isinstance(genomes_dictionary[g], str)
-        else genomes_dictionary[g]
-        for g in unique_genomes
-    ])
+    parasitic_list = []
+    for g in unique_genomes:
+        seq = genomes_dictionary[g]
+        if isinstance(seq, str):
+            parasitic_list.append(seq)
+        else:
+            parasitic_list.append("".join(seq))
 
-    return parasitic_populations, genomes_matrix.tocsr(), pre_genomes_matrix.tocsr()
-
+    parasitic_populations = np.array(parasitic_list)
+    
+    # Return genome sequences, the infection matrices, and state vector #
+    return parasitic_populations, mature_matrix.tocsr(), immature_matrix.tocsr(), X 
+   
 # -------------------------------------------------------------------------------------------------------- #
