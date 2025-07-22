@@ -47,29 +47,3 @@ def human_to_mosquito(X, mature_matrix, HM_code, HPC_code):
     chosen = list(set(chosen))
     
     return chosen
-
-
-
-# ------------------------------------------------------------------------------- #
-# # Set incubation timers for exposed humans when infected by mosquitoes #
-# def func_lambda_humans(transition_player: int,
-#                        inoculated_genomes: list,
-#                        pre_genomes_matrix: csr_matrix,
-#                        X_matrix: np.ndarray,
-#                        gamma: float) -> None:
-#     # For each inoculated genome ID, set the timer until it becomes infectious #
-#     for genome_id in inoculated_genomes:
-#         pre_genomes_matrix[genome_id, transition_player] = gamma
-
-# # Determine infection classification of a human agent based on its parasite genomes #
-# def classification_S_M_PC(transition_player, genomes_matrix):
-#     # player_genomes: genome IDs present in the specified human agent #
-#     player_genomes = genomes_matrix[:, transition_player].tocoo().row
-#     if len(player_genomes) == 0:
-#         return "S"
-#     elif len(player_genomes) == 1:
-#         return "M"
-#     else:
-#         return "PC"
-
-# ------------------------------------------------------------------------------- #

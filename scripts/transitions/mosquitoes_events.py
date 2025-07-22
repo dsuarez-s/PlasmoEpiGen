@@ -9,19 +9,19 @@ import numpy as np
 from scipy.sparse import csr_matrix  
 
 # Reset a mosquito to susceptible and clear its parasite genomes #
-def func_toMS(transition_player, X_matrix, immature_matrix, mature_matrix, MS_code):
+def func_toMS(transition_Player, X_matrix, immature_matrix, mature_matrix, MS_code):
     
     # Set the mosquito state to MS (susceptible) #
-    X_matrix[transition_player] = MS_code
+    X_matrix[transition_Player] = MS_code
     
     # Remove any parasite genomes from the mature matrix #       
     mature_m = mature_matrix.tolil()
-    mature_m[:, transition_player] = 0
+    mature_m[:, transition_Player] = 0
     mature_matrix = mature_m.tocsr()
 
     # Remove any parasite genomes from the immature matrix #
     immature_m = immature_matrix.tolil()
-    immature_m[:, transition_player] = 0
+    immature_m[:, transition_Player] = 0
     immature_matrix = immature_m.tocsr()
     
     # Return updated state and genome matrices #

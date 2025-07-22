@@ -10,18 +10,19 @@ from scipy import sparse
 import heapq
 
 # Helpers para populación y genomas #
-from scripts.helpers.population_initialization import initialize_population_counts
-from scripts.genetics.genome_initialization    import initialize_genomes
+from scripts.genetics.genome_initialization import initialize_genomes
 
 # Cálculo de tasas #
 from scripts.transitions.calculate_forces import compute_propensities
 
 # Funciones de transición de estado #
 from scripts.transitions.mosquitoes_events import func_toMS, mosquito_to_human
-from scripts.transitions.humans_events    import human_to_mosquito
+from scripts.transitions.humans_events import human_to_mosquito
+from scripts.transitions.event_queue_schedule import event_queue_execution
 
 # Recombination y limpieza de haplotipos #
-from scripts.genetics.recombination import recombination, update_matrices, classification_S_M_PC
+from scripts.genetics.recombination import recombination
+from scripts.helpers.state_inspectors import update_matrices, classification_S_M_PC
 
 """
 sigma_h:   Number of bites per mosquito
@@ -40,12 +41,12 @@ xi:        Lifespan of parasites in mosquito salivary glands
 # --------------------------------------- #
 class MalariaEGModel:
     def __init__(self, epi_parameters, pop_parameters,
-                 name_folder, size_pool, iteration, distribution, genomes,
+                 name_folder, iteration, distribution, genomes,
                  clone_distribution_human, clone_distribution_mosquito):
         
         self.event_queue = []            
         heapq.heapify(self.event_queue)  
-        
+        size_pool = len(genomes)
         # Initialize model parameters #
         self.config = {"name_folder": name_folder,"size_pool": size_pool,
                        "iteration": iteration, "distribution": distribution}
@@ -72,13 +73,14 @@ class MalariaEGModel:
         # Genetic initialization #
         init_genomes = initialize_genomes(gamma = self.epi["gamma"] , xi = self.epi["xi"],
                                           genomes_dictionary = genomes,
-                                          HM_code = self.HM, HPC_code = self.HPC,
-                                          MC_code = self.MC, MPC_code = self.MPC,
+                                          HM_code = self.HM, HS_code = self.HS, HPC_code = self.HPC,
+                                          MC_code = self.MC, MPC_code = self.MPC, MS_code = self.MS,
                                           clone_distribution_human = clone_distribution_human,
+                                          num_mos = self.num_mos, num_hum = self.num_hum,
                                           clone_distribution_mosquito = clone_distribution_mosquito,
-                                          event_queue = self.event_queue)
-        
-                   
+                                          event_queue = self.event_queue)      
+            
+            
         self.parasitic_populations = init_genomes[0]
         self.mature_matrix = init_genomes[1]
         self.immature_matrix = init_genomes[2]  
@@ -126,7 +128,7 @@ class MalariaEGModel:
                     
                     # Schedule a death event for each assigned haplotype
                     genome_ID = g
-                    t_event = self.alpha_H + self.actual_time 
+                    t_event = self.epi["alpha_H"] + self.actual_time 
                     type_event = "Gametocytes Maturation"
                     agent = self.transitionPlayer
                     heapq.heappush(self.event_queue, (t_event, type_event, genome_ID, agent))
@@ -162,7 +164,7 @@ class MalariaEGModel:
                     
                     # Schedule a death event for each assigned haplotype #
                     genome_ID = g
-                    t_event = self.alpha_M + self.actual_time 
+                    t_event = self.epi["alpha_M"] + self.actual_time 
                     type_event = "Sporozoites Maturation"
                     agent = self.transitionPlayer
                     heapq.heappush(self.event_queue, (t_event, type_event, genome_ID, agent))
@@ -172,7 +174,7 @@ class MalariaEGModel:
                                            mature_matrix=self.mature_matrix)
         else:
             # Mosquito death/reset to susceptible #
-            matrices = func_toMS(transitionPlayer = self.transitionPlayer,
+            matrices = func_toMS(transition_Player = self.transitionPlayer,
                                  X_matrix = self.X,
                                  immature_matrix = self.immature_matrix,
                                  mature_matrix = self.mature_matrix,
@@ -236,74 +238,34 @@ class MalariaEGModel:
         # Run the full simulation up to tmax #
         #self.save_information(0, 0, self.genomes_matrix.shape[0])
         time_step = 1
-        while self.actual_time < tmax:    
-            self.actual_time += self.tau  
-            while self.event_queue and self.event_queue[0][0] < self.actual_time:
-
-                # 2) Comprueba el próximo evento de parásito (si existe) #
-                if(self.event_queue):
-                    next_in_queue_time, evt_type, genome_ID, agent = self.event_queue[0]
-                else:
-                    next_in_queue_time = np.inf
-
-                # 3) Decide qué evento ejecutar #
-                if(next_in_queue_time < self.actual_time and next_in_queue_time <= tmax):
-                    # — Evento de parásito “a tiempo” #
-                    heapq.heappop(self.event_queue)
-
-                    if(evt_type == "Gametocytes Maturation"):
-                        # Mueve 1 clon de immature -> mature #
-                        self.immature_matrix[genome_ID, agent] -= 1
-                        self.mature_matrix  [genome_ID, agent] += 1
-
-                        # Encola su muerte futura #
-                        t_next = self.actual_time + self.epi["gamma"]
-                        heapq.heappush(self.event_queue,(t_next, "Death", genome_ID, agent))
-                        
-                        self.X = classification_S_M_PC(transitionPlayer=agent,
-                                                       X_matrix=self.X,
-                                                       mature_matrix=self.mature_matrix)
-
-                    elif(evt_type == "Sporozoites Maturation"):
-                        # Mueve 1 clon de immature -> mature #
-                        self.immature_matrix[genome_ID, agent] -= 1
-                        self.mature_matrix  [genome_ID, agent] += 1
-
-                        # Encola su muerte futura #
-                        t_next = self.actual_time + self.epi["xi"]
-                        heapq.heappush(self.event_queue,(t_next, "Death", genome_ID, agent))
-                        
-                        self.X = classification_S_M_PC(transitionPlayer=agent,
-                                                       X_matrix=self.X,
-                                                       mature_matrix=self.mature_matrix)
-                    elif evt_type == "Death":
-                        # Quita 1 clon de mature
-                        self.mature_matrix[genome_ID, agent] -= 1
-                        
-                        self.X = classification_S_M_PC(transitionPlayer=agent,
-                                                       X_matrix=self.X,
-                                                       mature_matrix=self.mature_matrix)
-
-                    #  Podar haplotipos extintos tras cada muerte de parásito #
-                    pop_matrix = update_matrices(mature_matrix = self.mature_matrix,
-                                                 immature_matrix = self.immature_matrix,
-                                                 parasitic_populations = self.parasitic_populations)
-
-                    self.parasitic_populations = pop_matrix[0]
-                    self.mature_matrix = pop_matrix[1]
-                    self.immature_matrix = pop_matrix[2]
-
-            #####################
-            ##  Run the model ##
-            #####################
-            
+        
+        while self.actual_time < tmax:
             self.calculate_forces()
             self.next_time_event()
             self.variate_population()
- 
+            self.actual_time += self.tau
+            
+            if(self.event_queue):
+                event_queue_executed = event_queue_execution(event_queue = self.event_queue, 
+                                                             actual_time = self.actual_time,
+                                                             immature_matrix = self.immature_matrix,
+                                                             mature_matrix = self.mature_matrix,
+                                                             X = self.X, epi_dict = self.epi,
+                                                             p_populations =  self.parasitic_populations)
+
+                self.event_queue = event_queue_executed[0]
+                self.immature_matrix = event_queue_executed[1]
+                self.mature_matrix = event_queue_executed[2]
+                self.X = event_queue_executed[3]
+                self.parasitic_populations = event_queue_executed[4]
+                        
             
             # 2) Guardar stats por cada unidad de tiempo superada
             while self.actual_time >= time_step and time_step <= tmax:
                 ratio = (self.generation_events / self.total_events) if self.total_events > 0 else 0
                 self.save_information(time_step, ratio, len(self.parasitic_populations))
+                print(self.actual_time)
+                print(self.X)
+                print(self.parasitic_populations)
+                print
                 time_step += 1
