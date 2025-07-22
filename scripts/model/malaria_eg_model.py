@@ -18,10 +18,10 @@ from scripts.transitions.calculate_forces import compute_propensities
 
 # Funciones de transición de estado #
 from scripts.transitions.mosquitoes_events import func_toMS, mosquito_to_human
-from scripts.transitions.humans_events    import human_to_mosquito, classification_S_M_PC
+from scripts.transitions.humans_events    import human_to_mosquito
 
 # Recombination y limpieza de haplotipos #
-from scripts.genetics.recombination import recombination, update_matrices
+from scripts.genetics.recombination import recombination, update_matrices, classification_S_M_PC
 
 """
 sigma_h:   Number of bites per mosquito
@@ -55,7 +55,7 @@ class MalariaEGModel:
         self.epi = {key: val for key, val in zip(epi_keys, epi_parameters)}   
 
         # Time and state counters #
-        self.t = 0
+        self.actual_time = 0
         self.HS, self.HM, self.HPC = 0, 1, 2
         self.MS, self.MC, self.MPC = 3, 4, 5
 
@@ -80,8 +80,8 @@ class MalariaEGModel:
         
                    
         self.parasitic_populations = init_genomes[0]
-        self.genomes_matrix = init_genomes[1]
-        self.pre_genomes_matrix = init_genomes[2]  
+        self.mature_matrix = init_genomes[1]
+        self.immature_matrix = init_genomes[2]  
         self.X = init_genomes[3]  
     
     # ------------------------------ #
@@ -117,136 +117,193 @@ class MalariaEGModel:
         # Apply state transitions based on event type #
         if self.transitionType == "lambda_humans":
             inoc = mosquito_to_human(X = self.X, 
-                                     parasitic_populations = self.parasitic_populations,
-                                     pre_genomes_matrix = self.pre_genomes_matrix,
-                                     genomes_matrix = self.genomes_matrix,
-                                     epi_params = self.epi)
+                                     mature_matrix = self.mature_matrix,
+                                     MC_code = self.MC, MPC_code = self.MPC)
+            
             for g in inoc:
-                if self.pre_genomes_matrix[g, self.transitionPlayer] == 0:
-                    self.pre_genomes_matrix[g, self.transitionPlayer] = self.alpha_H
+                if self.immature_matrix[g, self.transitionPlayer] == 0:
+                    self.immature_matrix[g, self.transitionPlayer] += 1
+                    
+                    # Schedule a death event for each assigned haplotype
+                    genome_ID = g
+                    t_event = self.alpha_H + self.actual_time 
+                    type_event = "Gametocytes Maturation"
+                    agent = self.transitionPlayer
+                    heapq.heappush(self.event_queue, (t_event, type_event, genome_ID, agent))
+
+                            
+            self.X = classification_S_M_PC(transitionPlayer=self.transitionPlayer,
+                                           X_matrix=self.X,
+                                           mature_matrix=self.mature_matrix)
 
         elif self.transitionType == "lambda_mosquitoes":
             inoc = human_to_mosquito(X = self.X,
-                                     parasitic_populations = self.parasitic_populations,
-                                     pre_genomes_matrix=self.pre_genomes_matrix,
-                                     genomes_matrix=self.genomes_matrix,
-                                     epi_params=self.epi)
-            
+                                     mature_matrix=self.mature_matrix,
+                                     HM_code=self.HM, HPC_code =self.HPC)
+                       
             result = recombination(inoculated_genomes=inoc, 
                                    parasitic_populations=self.parasitic_populations,
-                                   pre_genomes_matrix=self.pre_genomes_matrix,
-                                   genomes_matrix=self.genomes_matrix,
+                                   immature_matrix=self.immature_matrix,
+                                   mature_matrix=self.mature_matrix,
                                    total_events=self.total_events,
                                    generation_events=self.generation_events,
-                                   distribution=self.config["distribution"])
-            
+                                   dist_loci=self.config["distribution"])
+                
             self.parasitic_populations = result[0]
-            self.pre_genomes_matrix = result[1]
-            self.genomes_matrix = result[2]
+            self.immature_matrix = result[1]
+            self.mature_matrix = result[2]
             self.total_events = result[3]
             self.generation_events = result[4]
             selected = result[5]
             
             for g in selected:
-                if self.pre_genomes_matrix[g, self.transitionPlayer] == 0:
-                    self.pre_genomes_matrix[g, self.transitionPlayer] = self.alpha_M
-
+                if(self.immature_matrix[g, self.transitionPlayer] == 0):
+                    self.immature_matrix[g, self.transitionPlayer] += 1
+                    
+                    # Schedule a death event for each assigned haplotype #
+                    genome_ID = g
+                    t_event = self.alpha_M + self.actual_time 
+                    type_event = "Sporozoites Maturation"
+                    agent = self.transitionPlayer
+                    heapq.heappush(self.event_queue, (t_event, type_event, genome_ID, agent))
+                    
+            self.X = classification_S_M_PC(transitionPlayer=self.transitionPlayer,
+                                           X_matrix=self.X,
+                                           mature_matrix=self.mature_matrix)
         else:
             # Mosquito death/reset to susceptible #
             matrices = func_toMS(transitionPlayer = self.transitionPlayer,
                                  X_matrix = self.X,
-                                 pre_genomes_matrix = self.pre_genomes_matrix,
-                                 genomes_matrix = self.genomes_matrix)
+                                 immature_matrix = self.immature_matrix,
+                                 mature_matrix = self.mature_matrix,
+                                 MS_code = self.MS)
             
             self.X = matrices[0]
-            self.genomes_matrix = matrices[1]
-            self.pre_genomes_matrix = matrices[2]
+            self.mature_matrix = matrices[1]
+            self.immature_matrix = matrices[2]
     
-            pop_matrix = update_matrices(genomes_matrix = self.genomes_matrix,
-                                         pre_genomes_matrix = self.pre_genomes_matrix,
+            pop_matrix = update_matrices(mature_matrix = self.mature_matrix,
+                                         immature_matrix = self.immature_matrix,
                                          parasitic_populations = self.parasitic_populations)
 
             self.parasitic_populations = pop_matrix[0]
-            self.genomes_matrix = pop_matrix[1]
-            self.pre_genomes_matrix = pop_matrix[2]
+            self.mature_matrix = pop_matrix[1]
+            self.immature_matrix = pop_matrix[2]
     
-    
+            self.X = classification_S_M_PC(transitionPlayer=self.transitionPlayer,
+                                           X_matrix=self.X,
+                                           mature_matrix=self.mature_matrix)
+        
     # -------------------------------- #
     # Part 6: Saving Simulation Output #
     # -------------------------------- #
-    def save_information(self, time_step, ratio_reco, num_haplotypes):
-        # Append summary of the current state to a file #
+    def save_information(self, time_step: int, ratio_reco: float, num_haplotypes: int):
+        """
+        Guarda en un archivo de texto la evolución del sistema.
+        - Escribe un encabezado si el archivo no existía.
+        - Agrega una línea por cada llamada con:
+          time_step;HS;HM;HPC;MS;MC;MPC;ratio_reco;num_haplotypes
+        """
+        # 1) Ruta de la carpeta y del archivo
         folder = self.config["name_folder"]
-        if not os.path.exists(folder):
-            os.mkdir(folder)
-            
-        fname   = f"BR_{self.epi["beta_hv"]}_IGD_{self.config["size_pool"]}_{self.config["iteration"]}.txt"
+        os.makedirs(folder, exist_ok=True)
+
+        fname = f'BR_{self.epi["beta_hv"]}_IGD_{self.config["size_pool"]}_{self.config["iteration"]}.txt'
         path = os.path.join(folder, fname)
-        
-        # Conteo de Estados #
-        nums = [ (self.X == s).sum() for s in (self.HS, self.HM, self.HPC, self.MS, self.MC, self.MPC)       ]
-        
-        # Fila a Escribir #
-        row = (f"{time_step};" +  ";".join(str(n) for n in nums) + ";" + f"{ratio_reco};{num_haplotypes}")
+
+        # 2) Encabezado (solo si es la primera vez)
+        header = "time;HS;HM;HPC;MS;MC;MPC;ratio_reco;num_haplotypes"
+        if not os.path.isfile(path):
+            with open(path, "w") as f:
+                f.write(header + "\n")
+
+        # 3) Conteo de cada estado
+        nums = [ (self.X == self.HS).sum(), (self.X == self.HM).sum(),
+                (self.X == self.HPC).sum(), (self.X == self.MS).sum(),
+                (self.X == self.MC).sum(), (self.X == self.MPC).sum()]
+
+        # 4) Línea a registrar
+        row = ";".join([str(time_step)] + [str(n) for n in nums] + [f"{ratio_reco}", f"{num_haplotypes}"])
+
+        # 5) Escritura en modo append
         with open(path, "a") as f:
-            f.write(row)
+            f.write(row + "\n")
             
     # ---------------------------- #
     # Part 7: Main Simulation Loop #
     # ---------------------------- #
     def run(self, tmax):
         # Run the full simulation up to tmax #
-        time_step = 1
-        self.calculate_forces()
-        
         #self.save_information(0, 0, self.genomes_matrix.shape[0])
+        time_step = 1
+        while self.actual_time < tmax:    
+            self.actual_time += self.tau  
+            while self.event_queue and self.event_queue[0][0] < self.actual_time:
 
-        while self.t < tmax:
+                # 2) Comprueba el próximo evento de parásito (si existe) #
+                if(self.event_queue):
+                    next_in_queue_time, evt_type, genome_ID, agent = self.event_queue[0]
+                else:
+                    next_in_queue_time = np.inf
+
+                # 3) Decide qué evento ejecutar #
+                if(next_in_queue_time < self.actual_time and next_in_queue_time <= tmax):
+                    # — Evento de parásito “a tiempo” #
+                    heapq.heappop(self.event_queue)
+
+                    if(evt_type == "Gametocytes Maturation"):
+                        # Mueve 1 clon de immature -> mature #
+                        self.immature_matrix[genome_ID, agent] -= 1
+                        self.mature_matrix  [genome_ID, agent] += 1
+
+                        # Encola su muerte futura #
+                        t_next = self.actual_time + self.epi["gamma"]
+                        heapq.heappush(self.event_queue,(t_next, "Death", genome_ID, agent))
+                        
+                        self.X = classification_S_M_PC(transitionPlayer=agent,
+                                                       X_matrix=self.X,
+                                                       mature_matrix=self.mature_matrix)
+
+                    elif(evt_type == "Sporozoites Maturation"):
+                        # Mueve 1 clon de immature -> mature #
+                        self.immature_matrix[genome_ID, agent] -= 1
+                        self.mature_matrix  [genome_ID, agent] += 1
+
+                        # Encola su muerte futura #
+                        t_next = self.actual_time + self.epi["xi"]
+                        heapq.heappush(self.event_queue,(t_next, "Death", genome_ID, agent))
+                        
+                        self.X = classification_S_M_PC(transitionPlayer=agent,
+                                                       X_matrix=self.X,
+                                                       mature_matrix=self.mature_matrix)
+                    elif evt_type == "Death":
+                        # Quita 1 clon de mature
+                        self.mature_matrix[genome_ID, agent] -= 1
+                        
+                        self.X = classification_S_M_PC(transitionPlayer=agent,
+                                                       X_matrix=self.X,
+                                                       mature_matrix=self.mature_matrix)
+
+                    #  Podar haplotipos extintos tras cada muerte de parásito #
+                    pop_matrix = update_matrices(mature_matrix = self.mature_matrix,
+                                                 immature_matrix = self.immature_matrix,
+                                                 parasitic_populations = self.parasitic_populations)
+
+                    self.parasitic_populations = pop_matrix[0]
+                    self.mature_matrix = pop_matrix[1]
+                    self.immature_matrix = pop_matrix[2]
+
+            #####################
+            ##  Run the model ##
+            #####################
+            
             self.calculate_forces()
             self.next_time_event()
             self.variate_population()
-            self.t += self.tau
-
-            # Decrease timers #
-            self.genomes_matrix -= (self.genomes_matrix > 0) * self.tau
-            self.pre_genomes_matrix -= (self.pre_genomes_matrix > 0) * self.tau
-
-            # Handle pre-genome to genome transitions #
-            nz_pre = sparse.find(self.pre_genomes_matrix)
-            nz_gen = sparse.find(self.genomes_matrix)
-            new_inf = np.where(nz_pre[2] < 0)[0]
-            new_rec = np.where(nz_gen[2] < 0)[0]
-            agents = set()
-
-            for idx in new_inf:
-                g, ag = nz_pre[0][idx], nz_pre[1][idx]
-                agents.add(ag)
-                self.pre_genomes_matrix[g, ag] = 0
-                self.pre_genomes_matrix.eliminate_zeros()
-                timer = self.epi["gamma"] if ag < self.MS else self.epi["xi"]
-                self.genomes_matrix[g, ag] = timer
-
-            for idx in new_rec:
-                g, ag = nz_gen[0][idx], nz_gen[1][idx]
-                agents.add(ag)
-                self.genomes_matrix[g, ag] = 0
-                self.genomes_matrix.eliminate_zeros()
-
-
+ 
             
-            up_pop_mat = update_matrices(genomes_matrix=self.genomes_matrix,
-                                         pre_genomes_matrix=self.pre_genomes_matrix,
-                                         parasitic_populations=self.parasitic_populations)
-            
-            self.parasitic_populations = up_pop_mat[0]
-            self.genomes_matrix = up_pop_mat[1]
-            self.pre_genomes_matrix = up_pop_mat[2] 
-            
-            humans_pos = set(np.where(self.X < self.MS)[0])
-            for ag in agents:
-                classification_S_M_PC(ag, self.genomes_matrix)
-
-            if self.t > time_step:
-                ratio = (self.generation_events / self.total_events if self.total_events > 0 else 0)
-                self.save_information(time_step, ratio, self.genomes_matrix.shape[0])
+            # 2) Guardar stats por cada unidad de tiempo superada
+            while self.actual_time >= time_step and time_step <= tmax:
+                ratio = (self.generation_events / self.total_events) if self.total_events > 0 else 0
+                self.save_information(time_step, ratio, len(self.parasitic_populations))
                 time_step += 1

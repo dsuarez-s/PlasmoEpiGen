@@ -9,40 +9,67 @@ import random
 import numpy as np  
 from scipy.sparse import csr_matrix
 
-# Determine infection classification of a human agent based on its parasite genomes #
-def classification_S_M_PC(transition_player: int, genomes_matrix: csr_matrix) -> str:
-    # player_genomes: genome IDs present in the specified human agent #
-    player_genomes = genomes_matrix[:, transition_player].tocoo().row
-    if len(player_genomes) == 0:
-        return "S"
-    elif len(player_genomes) == 1:
-        return "M"
-    else:
-        return "PC"
-
-# Set incubation timers for exposed humans when infected by mosquitoes #
-def func_lambda_humans(transition_player: int,
-                       inoculated_genomes: list,
-                       pre_genomes_matrix: csr_matrix,
-                       X_matrix: np.ndarray,
-                       gamma: float) -> None:
-    # For each inoculated genome ID, set the timer until it becomes infectious #
-    for genome_id in inoculated_genomes:
-        pre_genomes_matrix[genome_id, transition_player] = gamma
 
 # Select parasite genomes for transmission from a human host to a mosquito vector #
-def human_to_mosquito(X: np.ndarray,
-                      genomes_matrix: csr_matrix,
-                      HM: int,
-                      HPC: int) -> list:
-    # human_indices: indices of currently infected human agents #
-    human_indices = np.where((X == HM) | (X == HPC))[0]
-    selected_human = random.choice(human_indices)
+def human_to_mosquito(X, mature_matrix, HM_code, HPC_code):
+    
+    # Indices of currently infected humans (monoclonal or polyclonal) #
+    humans_indices = np.where((X == HM_code) | (X == HPC_code))[0]
+    selected_human = random.choice(humans_indices)
+    
+    # Extract the count vector for the selected mosquito as a dense array #
+    gen_information = mature_matrix.getcol(selected_human).tocoo()
+    present_genomes = gen_information.row 
+    weights   = gen_information.data
+    
+    # Raise an error if no haplotype is present (this should not happen) #
+    if len(present_genomes) == 0:
+        raise ValueError(f"No haplotypes found for human index {selected_human}")
 
-    # present_genomes: genome IDs present in the selected human #
-    present_genomes = genomes_matrix[:, selected_human].tocoo().row
-    if len(present_genomes) <= 1:
-        return list(present_genomes)
+    # If exactly one haplotype is present, return it directly #
+    if len(present_genomes) == 1:
+        return [int(present_genomes[0])]
+    
+    # Normalize weights to sum to 1 to obtain probabilities #
+    probabilities = weights / weights.sum()
 
-    # Sample a random subset of genomes for transmission #
-    return random.sample(list(present_genomes), random.randint(1, len(present_genomes)))
+    # Convert indices and probabilities to lists #
+    positions = list(present_genomes)
+    probs = list(probabilities)
+
+    # Randomly choose how many haplotypes to transmit #
+    k = np.random.randint(1, len(positions) + 1)
+
+    # Sample k unique haplotypes weighted by their probabilities #
+    chosen = np.random.choice(positions, size=k, replace=True, p=probs)
+    
+    # Convert the result to a list and delete duplicates #
+    chosen = list(set(chosen))
+    
+    return chosen
+
+
+
+# ------------------------------------------------------------------------------- #
+# # Set incubation timers for exposed humans when infected by mosquitoes #
+# def func_lambda_humans(transition_player: int,
+#                        inoculated_genomes: list,
+#                        pre_genomes_matrix: csr_matrix,
+#                        X_matrix: np.ndarray,
+#                        gamma: float) -> None:
+#     # For each inoculated genome ID, set the timer until it becomes infectious #
+#     for genome_id in inoculated_genomes:
+#         pre_genomes_matrix[genome_id, transition_player] = gamma
+
+# # Determine infection classification of a human agent based on its parasite genomes #
+# def classification_S_M_PC(transition_player, genomes_matrix):
+#     # player_genomes: genome IDs present in the specified human agent #
+#     player_genomes = genomes_matrix[:, transition_player].tocoo().row
+#     if len(player_genomes) == 0:
+#         return "S"
+#     elif len(player_genomes) == 1:
+#         return "M"
+#     else:
+#         return "PC"
+
+# ------------------------------------------------------------------------------- #

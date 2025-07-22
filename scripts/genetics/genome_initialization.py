@@ -118,8 +118,8 @@ def initialize_genomes(clone_distribution_human,clone_distribution_mosquito,
                 # Randomly sample haplotypes for this agent from the global pool
                 haplotypes = random.sample(selected_genomes, num_clones)
                 for genome in haplotypes:
-                    row = genome_to_index[genome]
-                    mature_matrix[row, position_agent] = 1
+                    genome_ID = genome_to_index[genome]
+                    mature_matrix[genome_ID, position_agent] = 1
                     # Remove from the global pool so it can't be assigned again #
                     selected_genomes.remove(genome)  
 
@@ -133,7 +133,7 @@ def initialize_genomes(clone_distribution_human,clone_distribution_mosquito,
                     else:
                         # Human: recovery time #
                         t_event = gamma  
-                    heapq.heappush(event_queue, (t_event, type_event, row, agent))
+                    heapq.heappush(event_queue, (t_event, type_event, genome_ID, agent))
     # CASE 2: Not enough genomes for global uniqueness, only guarantee unique clones per agent #
     else:
         for position_agent in range(len(X_counts)):
