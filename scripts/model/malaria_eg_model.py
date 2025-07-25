@@ -17,7 +17,7 @@ from scripts.transitions.calculate_forces import compute_propensities
 
 # Funciones de transición de estado #
 from scripts.transitions.mosquitoes_events import func_toMS, mosquito_to_human
-from scripts.transitions.humans_events import human_to_mosquito
+from scripts.transitions.humans_events import human_to_mosquito, func_toHS
 from scripts.transitions.event_queue_schedule import event_queue_execution
 
 # Recombination y limpieza de haplotipos #
@@ -44,12 +44,16 @@ class MalariaEGModel:
                  name_folder, iteration, distribution, genomes,
                  clone_distribution_human, clone_distribution_mosquito):
         
+
+        
         self.event_queue = []            
         heapq.heapify(self.event_queue)  
         size_pool = len(genomes)
         # Initialize model parameters #
         self.config = {"name_folder": name_folder,"size_pool": size_pool,
                        "iteration": iteration, "distribution": distribution}
+        
+
         
         # Initialize epidemiological  parameters #
         epi_keys = ["sigma_h", "gamma", "delta", "alpha_H", "alpha_M", "sigma_v", "beta_hv", "beta_vh", "xi"]  
@@ -65,13 +69,21 @@ class MalariaEGModel:
         self.num_mos = pop_parameters["Mos"]
         self.num_hum = pop_parameters["Hum"]        
 
+        
+        # 1) Ruta de la carpeta y del archivo
+        folder = self.config["name_folder"]
+        os.makedirs(folder, exist_ok=True)
+
+        fname = f'BR_{self.epi["beta_hv"]}_IGD_{self.config["size_pool"]}_{self.config["iteration"]}.txt'
+        self.path = os.path.join(folder, fname)
+        
         # Event list and counters #
-        self.events = ["lambda_humans", "lambda_mosquitoes", "toMS"]
+        self.events = ["lambda_humans", "lambda_mosquitoes", "toMS", "human_clearance"]
         self.generation_events = 0
         self.total_events = 0
         
         # Genetic initialization #
-        init_genomes = initialize_genomes(gamma = self.epi["gamma"] , xi = self.epi["xi"],
+        init_genomes = initialize_genomes(xi = self.epi["xi"],
                                           genomes_dictionary = genomes,
                                           HM_code = self.HM, HS_code = self.HS, HPC_code = self.HPC,
                                           MC_code = self.MC, MPC_code = self.MPC, MS_code = self.MS,
@@ -85,18 +97,22 @@ class MalariaEGModel:
         self.mature_matrix = init_genomes[1]
         self.immature_matrix = init_genomes[2]  
         self.X = init_genomes[3]  
+        
+        
+        
     
     # ------------------------------ #
     # Part 3: Computing Propensities #
     # ------------------------------ #
     
     def calculate_forces(self):
-        self.propensities = compute_propensities(X = self.X, Hum_Pop = self.num_hum,
-                                                 Mos_Pop = self.num_mos,
+        self.propensities = compute_propensities(X = self.X, Hum_Pop = self.num_hum,Mos_Pop = self.num_mos,
                                                  sigma_v = self.epi["sigma_v"], sigma_h = self.epi["sigma_h"],
                                                  beta_hv = self.epi["beta_hv"], beta_vh = self.epi["beta_vh"],
-                                                 delta = self.epi["delta"])
-    
+                                                 delta = self.epi["delta"], gamma = self.epi["gamma"],
+                                                 HS_code = self.HS, HM_code = self.HM, HPC_code = self.HPC,
+                                                 MS_code = self.MS, MC_code = self.MC, MPC_code = self.MPC)
+
     # ---------------------------- #
     # Part 4: Selecting Next Event #
     # ---------------------------- #
@@ -172,6 +188,31 @@ class MalariaEGModel:
             self.X = classification_S_M_PC(transitionPlayer=self.transitionPlayer,
                                            X_matrix=self.X,
                                            mature_matrix=self.mature_matrix)
+            
+        elif self.transitionType == "human_clearance":
+        
+            matrices = func_toHS(transition_Player = self.transitionPlayer,
+                                 X_matrix = self.X,
+                                 immature_matrix = self.immature_matrix,
+                                 mature_matrix = self.mature_matrix,
+                                 HS_code = self.HS)
+            
+            self.X = matrices[0]
+            self.mature_matrix = matrices[1]
+            self.immature_matrix = matrices[2]
+    
+            pop_matrix = update_matrices(mature_matrix = self.mature_matrix,
+                                         immature_matrix = self.immature_matrix,
+                                         parasitic_populations = self.parasitic_populations)
+
+            self.parasitic_populations = pop_matrix[0]
+            self.mature_matrix = pop_matrix[1]
+            self.immature_matrix = pop_matrix[2]
+    
+            self.X = classification_S_M_PC(transitionPlayer=self.transitionPlayer,
+                                           X_matrix=self.X,
+                                           mature_matrix=self.mature_matrix)
+        
         else:
             # Mosquito death/reset to susceptible #
             matrices = func_toMS(transition_Player = self.transitionPlayer,
@@ -206,17 +247,11 @@ class MalariaEGModel:
         - Agrega una línea por cada llamada con:
           time_step;HS;HM;HPC;MS;MC;MPC;ratio_reco;num_haplotypes
         """
-        # 1) Ruta de la carpeta y del archivo
-        folder = self.config["name_folder"]
-        os.makedirs(folder, exist_ok=True)
-
-        fname = f'BR_{self.epi["beta_hv"]}_IGD_{self.config["size_pool"]}_{self.config["iteration"]}.txt'
-        path = os.path.join(folder, fname)
-
+                   
         # 2) Encabezado (solo si es la primera vez)
         header = "time;HS;HM;HPC;MS;MC;MPC;ratio_reco;num_haplotypes"
-        if not os.path.isfile(path):
-            with open(path, "w") as f:
+        if not os.path.isfile(self.path):
+            with open(self.path, "w") as f:
                 f.write(header + "\n")
 
         # 3) Conteo de cada estado
@@ -228,7 +263,7 @@ class MalariaEGModel:
         row = ";".join([str(time_step)] + [str(n) for n in nums] + [f"{ratio_reco}", f"{num_haplotypes}"])
 
         # 5) Escritura en modo append
-        with open(path, "a") as f:
+        with open(self.path, "a") as f:
             f.write(row + "\n")
             
     # ---------------------------- #
@@ -239,11 +274,21 @@ class MalariaEGModel:
         #self.save_information(0, 0, self.genomes_matrix.shape[0])
         time_step = 1
         
+        if os.path.isfile(self.path):
+            os.remove(self.path)
+            
         while self.actual_time < tmax:
             self.calculate_forces()
             self.next_time_event()
-            self.variate_population()
             self.actual_time += self.tau
+            #print("Initial")
+            #print(self.X)
+            #print(self.transitionPlayer)
+            print(self.actual_time)
+            print("queue",self.event_queue)
+            print("Change")
+            #print(self.immature_matrix.toarray())
+            #print(self.mature_matrix.toarray())
             
             if(self.event_queue):
                 event_queue_executed = event_queue_execution(event_queue = self.event_queue, 
@@ -258,9 +303,13 @@ class MalariaEGModel:
                 self.mature_matrix = event_queue_executed[2]
                 self.X = event_queue_executed[3]
                 self.parasitic_populations = event_queue_executed[4]
-                        
             
+            print(self.actual_time)
+            print("queue",self.event_queue)         
+            self.variate_population()
             # 2) Guardar stats por cada unidad de tiempo superada
+
+                
             while self.actual_time >= time_step and time_step <= tmax:
                 ratio = (self.generation_events / self.total_events) if self.total_events > 0 else 0
                 self.save_information(time_step, ratio, len(self.parasitic_populations))

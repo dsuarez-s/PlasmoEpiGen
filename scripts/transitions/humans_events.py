@@ -9,6 +9,24 @@ import random
 import numpy as np  
 from scipy.sparse import csr_matrix
 
+# Reset a human to susceptible and clear its parasite genomes #
+def func_toHS(transition_Player, X_matrix, immature_matrix, mature_matrix, HS_code):
+    
+    # Set the mosquito state to MS (susceptible) #
+    X_matrix[transition_Player] = HS_code
+    
+    # Remove any parasite genomes from the mature matrix #       
+    mature_m = mature_matrix.tolil()
+    mature_m[:, transition_Player] = 0
+    mature_matrix = mature_m.tocsr()
+
+    # Remove any parasite genomes from the immature matrix #
+    immature_m = immature_matrix.tolil()
+    immature_m[:, transition_Player] = 0
+    immature_matrix = immature_m.tocsr()
+    
+    # Return updated state and genome matrices #
+    return X_matrix, mature_matrix, immature_matrix
 
 # Select parasite genomes for transmission from a human host to a mosquito vector #
 def human_to_mosquito(X, mature_matrix, HM_code, HPC_code):

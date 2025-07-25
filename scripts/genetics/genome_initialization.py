@@ -49,7 +49,6 @@ Parameters:
 - genomes_dictionary: dict mapping genome ID to sequence (string or list of chars).
 - HS_code, HM_code, HPC_code: int codes for susceptible, monoclonal, and polyclonal humans.
 - MS_code, MC_code, MPC_code: int codes for susceptible, monoclonal, and polyclonal mosquitoes.
-- gamma: int or float, recovery time from human infection.
 - xi: int or float, parasite lifespan in mosquito salivary glands.
 - event_queue: heap queue to store scheduled parasite extinction events.
 
@@ -64,7 +63,7 @@ def initialize_genomes(clone_distribution_human,clone_distribution_mosquito,
                        num_mos,num_hum,genomes_dictionary,
                        HS_code, HM_code, HPC_code,
                        MS_code, MC_code, MPC_code,
-                       gamma, xi, event_queue):
+                       xi, event_queue):
 
     # Assign the number of clones each human and mosquito agent will have #
     human_clone_counts = assign_clones(clone_distribution_human, num_hum, len(genomes_dictionary))
@@ -124,16 +123,13 @@ def initialize_genomes(clone_distribution_human,clone_distribution_mosquito,
                     selected_genomes.remove(genome)  
 
                     # Schedule a death event for each assigned haplotype
-                    type_event = "Death"
+                    type_event = "Sporozoites Clearance"
                     agent = position_agent
                     # Choose event time based on host type #
                     if agent_state > HPC_code:
                         # Mosquito: parasite lifespan in mosquito salivary glands #
                         t_event = xi  
-                    else:
-                        # Human: recovery time #
-                        t_event = gamma  
-                    heapq.heappush(event_queue, (t_event, type_event, genome_ID, agent))
+                        heapq.heappush(event_queue, (t_event, type_event, genome_ID, agent))
     # CASE 2: Not enough genomes for global uniqueness, only guarantee unique clones per agent #
     else:
         for position_agent in range(len(X_counts)):
@@ -147,16 +143,13 @@ def initialize_genomes(clone_distribution_human,clone_distribution_mosquito,
                     mature_matrix[row, position_agent] = 1
 
                     # Schedule a death event for each assigned haplotype #
-                    type_event = "Death"
+                    type_event = "Sporozoites Clearance"
                     agent = position_agent
                     # Choose event time based on host type #
                     if agent_state > HPC_code:
                         # Mosquito: parasite lifespan in mosquito salivary glands #
                         t_event = xi  
-                    else:
-                        # Human: recovery time #
-                        t_event = gamma  
-                    heapq.heappush(event_queue, (t_event, type_event, row, agent))
+                        heapq.heappush(event_queue, (t_event, type_event, row, agent))
 
     # Convert genome sequences to a NumPy array #
     parasitic_list = []

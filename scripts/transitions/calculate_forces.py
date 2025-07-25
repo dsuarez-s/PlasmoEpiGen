@@ -1,16 +1,14 @@
 import numpy as np
 
-def compute_propensities(X, Hum_Pop, Mos_Pop,sigma_v, sigma_h, beta_hv, beta_vh, delta):
-    
-    # Asignación de los valores para cada categoria #
-    HS, HM, HPC = 0, 1, 2
-    MS, MC, MPC = 3, 4, 5
-    
+def compute_propensities(X, Hum_Pop, Mos_Pop, 
+                         sigma_v, sigma_h, beta_hv, beta_vh, delta, gamma,
+                         HS_code, HM_code, HPC_code, MS_code, MC_code, MPC_code):
+        
     # División para cada uno de los estados ya sea infección o susceptibilidad a ser infectado #
-    inf_mos = (X == MC) | (X == MPC)
-    inf_hum = (X == HM) | (X == HPC)
-    sus_hum = (X == HS) | (X == HM) | (X == HPC)
-    sus_mos = (X == MS) | (X == MC) | (X == MPC)
+    inf_mos = (X == MC_code) | (X == MPC_code)
+    inf_hum = (X == HM_code) | (X == HPC_code)
+    sus_hum = (X == HS_code) | (X == HM_code) | (X == HPC_code)
+    sus_mos = (X == MS_code) | (X == MC_code) | (X == MPC_code)
     
     # Calculamos las fuerzas de infección de humanos y vectores #
     prop_bites_h = (sigma_v*Mos_Pop*sigma_h)/(sigma_v*Mos_Pop + sigma_h*Hum_Pop)
@@ -23,5 +21,6 @@ def compute_propensities(X, Hum_Pop, Mos_Pop,sigma_v, sigma_h, beta_hv, beta_vh,
     prop_inf_h = lambda_h*sus_hum
     prop_inf_v = lambda_v*sus_mos
     prop_death_mos = (1/delta)*inf_mos
+    prop_clearance_hum = (1/gamma)*inf_hum
     
-    return np.hstack([prop_inf_h, prop_inf_v, prop_death_mos])
+    return np.hstack([prop_inf_h, prop_inf_v, prop_death_mos, prop_clearance_hum])
