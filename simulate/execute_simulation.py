@@ -33,7 +33,7 @@ initial_genomes = { 0: "AAAAAA", 1: "BBBBBB" }
 dist_humans = {0: 0.25, 1:0.5 , 2:0.25} 
 dist_mosquitoes = {0: 0.4, 1:0.2 , 2:0.4} 
 epidemiological_parameters = [sigma_h, gamma, delta, alpha_H, alpha_M, sigma_v, beta_hv, beta_vh, xi]    
-population_parameters = {"Mos": 10 , "Hum": 10}
+population_parameters = {"Mos": 10 , "Hum": 5}
 
 # ------------------------------------------------------------------ #
 model = MalariaEGModel(epi_parameters = epidemiological_parameters,

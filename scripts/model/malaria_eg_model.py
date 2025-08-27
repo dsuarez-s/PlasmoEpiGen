@@ -24,6 +24,12 @@ from scripts.transitions.event_queue_schedule import event_queue_execution
 from scripts.genetics.recombination import recombination
 from scripts.helpers.state_inspectors import update_matrices, classification_S_M_PC
 
+# Metrics measured along the process #
+from scripts.observables.identity_by_descent import (precompute_ibd_table, measure_ibd_relative_to_founders as measure_ibd)
+from scripts.observables.nucleotide_diversity import (measure_nucleotide_diversity as measure_pi)
+from scripts.observables.shannon_index import (measure_shannon_population as measure_shannon)
+from scripts.observables.multiplicity_of_infection import measure_moi
+
 """
 sigma_h:   Number of bites per mosquito
 gamma:     Recovery time of a human from infection
@@ -44,7 +50,7 @@ class MalariaEGModel:
                  name_folder, iteration, distribution, genomes,
                  clone_distribution_human, clone_distribution_mosquito):
         
-
+        self.genomes =genomes
         
         self.event_queue = []            
         heapq.heapify(self.event_queue)  
@@ -284,9 +290,9 @@ class MalariaEGModel:
             #print("Initial")
             #print(self.X)
             #print(self.transitionPlayer)
-            print(self.actual_time)
-            print("queue",self.event_queue)
-            print("Change")
+            #print(self.actual_time)
+            #print("queue",self.event_queue)
+            #print("Change")
             #print(self.immature_matrix.toarray())
             #print(self.mature_matrix.toarray())
             
@@ -304,8 +310,8 @@ class MalariaEGModel:
                 self.X = event_queue_executed[3]
                 self.parasitic_populations = event_queue_executed[4]
             
-            print(self.actual_time)
-            print("queue",self.event_queue)         
+            #print(self.actual_time)
+            #print("queue",self.event_queue)         
             self.variate_population()
             # 2) Guardar stats por cada unidad de tiempo superada
 
@@ -313,8 +319,33 @@ class MalariaEGModel:
             while self.actual_time >= time_step and time_step <= tmax:
                 ratio = (self.generation_events / self.total_events) if self.total_events > 0 else 0
                 self.save_information(time_step, ratio, len(self.parasitic_populations))
+                self.ibd_table = precompute_ibd_table(self.mature_matrix.toarray(),
+                                                      self.parasitic_populations,
+                                                      self.genomes)
+                
+                moi_h, moi_m = measure_moi(self.mature_matrix, self.X,
+                                           HS=self.HS, HM=self.HM, HPC=self.HPC,
+                                           MS=self.MS, MC=self.MC, MPC=self.MPC)
+                
+                ibd = measure_ibd(self.mature_matrix, self.X, self.ibd_table,
+                                  HS=self.HS, HM=self.HM, HPC=self.HPC,
+                                  MS=self.MS, MC=self.MC, MPC=self.MPC)
+                
+                sh = measure_shannon(self.mature_matrix, self.X,
+                                     HS=self.HS, HM=self.HM, HPC=self.HPC,
+                                     MS=self.MS, MC=self.MC, MPC=self.MPC)
+                
+                pi = measure_pi(self.mature_matrix, self.X, self.parasitic_populations,
+                                HS=self.HS, HM=self.HM, HPC=self.HPC,
+                                MS=self.MS, MC=self.MC, MPC=self.MPC)
+
+                
                 print(self.actual_time)
                 print(self.X)
-                print(self.parasitic_populations)
-                print
+                #print(self.parasitic_populations)
+                print(moi_h,moi_m)
+                print(ibd)
+                print(sh)
+                print(pi)
+                
                 time_step += 1
