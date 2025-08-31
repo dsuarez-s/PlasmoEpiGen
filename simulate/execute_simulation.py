@@ -31,9 +31,9 @@ xi = 25         # Lifespan of parasites in mosquito salivary glands [4] #
 
 initial_genomes = { 0: "AAAAAA", 1: "BBBBBB" }
 dist_humans = {0: 0.25, 1:0.5 , 2:0.25} 
-dist_mosquitoes = {0: 0.4, 1:0.2 , 2:0.4} 
+dist_mosquitoes = {0: 0.25, 1:0.5 , 2:0.25} 
 epidemiological_parameters = [sigma_h, gamma, delta, alpha_H, alpha_M, sigma_v, beta_hv, beta_vh, xi]    
-population_parameters = {"Mos": 10 , "Hum": 5}
+population_parameters = {"Mos": 50 , "Hum": 50}
 
 # ------------------------------------------------------------------ #
 model = MalariaEGModel(epi_parameters = epidemiological_parameters,
@@ -45,5 +45,5 @@ model = MalariaEGModel(epi_parameters = epidemiological_parameters,
                        clone_distribution_human = dist_humans,
                        clone_distribution_mosquito = dist_mosquitoes)
 # ------------------------------------------------------------------ #
-model.run(tmax=60)
+model.run(tmax=120)
 # ------------------------------------------------------------------ #      

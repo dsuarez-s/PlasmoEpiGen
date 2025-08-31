@@ -10,7 +10,7 @@ dict: { founder_name: { hap_index: ibd_value, ... } }
 
 def precompute_ibd_table(mature_matrix, parasitic_populations, genomes):
 
-    founder_lists = {name: np.array(list(seq)) for name, seq in genomes.items()}
+    founder_lists = {name: np.array(list(name)) for number, name in genomes.items()}
 
     # Identify active haplotypes
     active_haplos = np.where(mature_matrix.sum(axis=1) > 0)[0]
@@ -38,7 +38,8 @@ def measure_ibd_relative_to_founders(mature_matrix, X, ibd_table,
                                      HS=0, HM=1, HPC=2, MS=3, MC=4, MPC=5):
 
     results = {name: {"humans": [], "mosquitoes": []} for name in ibd_table.keys()}
-
+    
+    mature_matrix = mature_matrix.toarray()
     infected_inds = np.where(mature_matrix.sum(axis=0) > 0)[0]
 
     for ind in infected_inds:
@@ -49,8 +50,8 @@ def measure_ibd_relative_to_founders(mature_matrix, X, ibd_table,
             avg_ibd = float(np.mean(vals))
 
             if X[ind] in [HS, HM, HPC]:
-                results[name]["humans"].append(avg_ibd)
+                results[name]["humans"].append(round(avg_ibd, 2))
             elif X[ind] in [MS, MC, MPC]:
-                results[name]["mosquitoes"].append(avg_ibd)
+                results[name]["mosquitoes"].append(round(avg_ibd, 2))
 
     return results

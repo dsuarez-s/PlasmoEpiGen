@@ -51,6 +51,6 @@ def measure_nucleotide_diversity(mature_matrix, X, parasitic_populations,
             d = np.sum(haplo_seqs[i] != haplo_seqs[j]) / L
             pi += p[i_idx] * p[j_idx] * d
 
-        results[host_type] = float(pi * 2)  # symmetry correction
+        results[host_type] = round(float(pi * 2), 2) # symmetry correction
 
     return results

@@ -43,12 +43,13 @@ def measure_shannon_population(mature_matrix, X,
         # Shannon index
         H = -np.sum(p * np.log(p))
 
-        # Normalize (0–1)
-        H_max = np.log(len(p))
-        if H_max <= 0:
-            raise ValueError(f"Invalid haplotype count in {host_type} for Shannon calculation")
-        H_norm = float(H / H_max)
-
-        results[host_type] = H_norm
+        # Normalización (0–1) usando número de haplotipos observados
+        S = len(p)
+        if S <= 1:
+            H_norm = 0.0
+        else:
+            H_norm = float(H / np.log(S))
+    
+        results[host_type] = round(H_norm, 2)
 
     return results

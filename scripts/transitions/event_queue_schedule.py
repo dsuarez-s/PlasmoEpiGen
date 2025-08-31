@@ -44,8 +44,8 @@ def event_queue_execution(event_queue, actual_time,
                                       X_matrix = X,
                                       mature_matrix = mature_matrix)
     
-    print("immature_matrix\n",immature_matrix.toarray())
-    print("mature_matrix\n",mature_matrix.toarray())
+    #print("immature_matrix\n",immature_matrix.toarray())
+    #print("mature_matrix\n",mature_matrix.toarray())
 
     # Verificación de valores negativos en las matrices #
     if (immature_matrix.data < 0).any():
