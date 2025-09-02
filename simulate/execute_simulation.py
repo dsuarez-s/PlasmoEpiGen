@@ -1,7 +1,10 @@
 # Fast run script for MalariaEGModel #
 from scripts.model.malaria_eg_model import MalariaEGModel
 import numpy as np
+import sys
 
+iter_number = sys.argv[1]
+num_hap = int(sys.argv[2])
 ##############################
 # Parameters and References ##
 ##############################
@@ -28,22 +31,26 @@ xi = 25         # Lifespan of parasites in mosquito salivary glands [4] #
 #################
 # Run the Model #
 #################
-
-initial_genomes = { 0: "AAAAAA", 1: "BBBBBB" }
-dist_humans = {0: 0.25, 1:0.5 , 2:0.25} 
-dist_mosquitoes = {0: 0.25, 1:0.5 , 2:0.25} 
+if (num_hap == 2):
+    initial_genomes = { 0: "AAAAAA", 1: "BBBBBB"}
+elif (num_hap == 3):
+    initial_genomes = { 0: "AAAAAA", 1: "BBBBBB", 2: "CCCCCC"}
+    
+dist_humans = {0: 0.75, 1:0.25 } 
+dist_mosquitoes = {0: 0.75, 1:0.25} 
 epidemiological_parameters = [sigma_h, gamma, delta, alpha_H, alpha_M, sigma_v, beta_hv, beta_vh, xi]    
-population_parameters = {"Mos": 50 , "Hum": 50}
+population_parameters = {"Mos": 350 , "Hum": 50}
 
+iteration_name = f"proof_{iter_number}"
 # ------------------------------------------------------------------ #
 model = MalariaEGModel(epi_parameters = epidemiological_parameters,
                        pop_parameters = population_parameters,
-                       name_folder="test",
-                       iteration="proof",
+                       name_folder="test/results/num_genomes_" + str(len(initial_genomes)),
+                       iteration=iteration_name,
                        distribution=[1/6] * 6,
                        genomes = initial_genomes,
                        clone_distribution_human = dist_humans,
                        clone_distribution_mosquito = dist_mosquitoes)
 # ------------------------------------------------------------------ #
-model.run(tmax=120)
+model.run(tmax=365)
 # ------------------------------------------------------------------ #      
