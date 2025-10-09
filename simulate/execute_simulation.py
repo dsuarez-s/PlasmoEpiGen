@@ -5,11 +5,14 @@ import sys
 
 iter_number = sys.argv[1]
 num_hap = int(sys.argv[2])
+num_bites = int(sys.argv[3])
+
 ##############################
 # Parameters and References ##
 ##############################
 
-sigma_h = 40    # Number of bites per mosquito  #
+
+sigma_h = int(num_bites)    # Number of bites per mosquito  #
 gamma = 50     # Recovery time of a human from infection [5] #
 delta = 90.4    # Lifespan of mosquitoes [4] #
 alpha_H = 11    # Maturation time of gametocytes in humans [2] #
@@ -35,17 +38,22 @@ if (num_hap == 2):
     initial_genomes = { 0: "AAAAAA", 1: "BBBBBB"}
 elif (num_hap == 3):
     initial_genomes = { 0: "AAAAAA", 1: "BBBBBB", 2: "CCCCCC"}
+elif (num_hap == 10):
+    initial_genomes = { 0: "AAAAAA", 1: "BBBBBB", 2: "CCCCCC", 3: "DDDDDD", 4: "EEEEEE", 
+                        5: "FFFFFF", 6: "GGGGGG", 7: "HHHHHH", 8: "IIIIII", 9: "JJJJJJ"}
     
-dist_humans = {0: 0.75, 1:0.25 } 
-dist_mosquitoes = {0: 0.75, 1:0.25} 
+dist_humans = {0: 0.2, 1:0.8} 
+dist_mosquitoes = {0: 0.2, 1:0.8} 
 epidemiological_parameters = [sigma_h, gamma, delta, alpha_H, alpha_M, sigma_v, beta_hv, beta_vh, xi]    
 population_parameters = {"Mos": 350 , "Hum": 50}
 
 iteration_name = f"proof_{iter_number}"
+name_fol = "test/results/num_genomes_" + str(len(initial_genomes)) + "_bitting_rate_" + str(num_bites)
+
 # ------------------------------------------------------------------ #
 model = MalariaEGModel(epi_parameters = epidemiological_parameters,
                        pop_parameters = population_parameters,
-                       name_folder="test/results/num_genomes_" + str(len(initial_genomes)),
+                       name_folder= name_fol,
                        iteration=iteration_name,
                        distribution=[1/6] * 6,
                        genomes = initial_genomes,

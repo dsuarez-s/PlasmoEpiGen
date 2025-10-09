@@ -26,6 +26,8 @@ def update_matrices(mature_matrix, immature_matrix, parasitic_populations):
     # Remove extinct haplotypes from matrices #
     combined = mature_matrix + immature_matrix
     alive = np.asarray(combined.sum(axis=1)).squeeze() != 0
+    
+    
     return (parasitic_populations[alive], mature_matrix[alive], immature_matrix[alive])
 
 # -------------------------------------------------------------------------------------- #
