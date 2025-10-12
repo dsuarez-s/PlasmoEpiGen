@@ -1,5 +1,18 @@
-def save_information(self, time_step: int, ratio_reco: float, num_haplotypes: int):
+import os
+import numpy as np
 
+# Metrics measured along the process #
+from scripts.observables.identity_by_descent import (precompute_ibd_table, measure_ibd_relative_to_founders as measure_ibd)
+from scripts.observables.nucleotide_diversity import (measure_nucleotide_diversity as measure_pi)
+from scripts.observables.shannon_index import (measure_shannon_population as measure_shannon)
+from scripts.observables.multiplicity_of_infection import measure_moi
+
+
+def save_information(self, time_step):
+
+    ratio_reco = (self.generation_events / self.total_events) if self.total_events > 0 else 0
+    num_haplotypes = len(self.parasitic_populations)
+    
     # 2) Encabezado (solo si es la primera vez)
     header = "time;HS;HM;HPC;MS;MC;MPC;ratio_reco;num_haplotypes"
     if not os.path.isfile(self.path):

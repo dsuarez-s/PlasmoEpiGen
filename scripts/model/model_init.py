@@ -1,6 +1,16 @@
 import os
 from collections import defaultdict
 
+# Helpers para populación y genomas #
+from scripts.genetics.genome_initialization import initialize_genomes
+
+# Metrics measured along the process #
+from scripts.observables.identity_by_descent import (precompute_ibd_table, measure_ibd_relative_to_founders as measure_ibd)
+from scripts.observables.nucleotide_diversity import (measure_nucleotide_diversity as measure_pi)
+from scripts.observables.shannon_index import (measure_shannon_population as measure_shannon)
+from scripts.observables.multiplicity_of_infection import measure_moi
+
+
 def init_model_state(self, epi_parameters, pop_parameters,name_folder,
                      iteration, distribution, genomes, clone_distribution_human,
                      clone_distribution_mosquito, heapq):

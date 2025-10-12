@@ -1,5 +1,26 @@
 import numpy as np
+import heapq
 
+# Funciones de transición de estado #
+from scripts.transitions.mosquitoes_events import func_toMS, mosquito_to_human
+from scripts.transitions.humans_events import human_to_mosquito, func_toHS
+
+# Recombination y limpieza de haplotipos #
+from scripts.helpers.state_inspectors import update_matrices, classification_S_M_PC
+from scripts.genetics.recombination import recombination
+
+"""
+sigma_h:   Number of bites per mosquito
+gamma:     Recovery time of a human from infection
+delta:     Lifespan of mosquitoes
+alpha_H:   Maturation time of gametocytes in humans
+alpha_M:   Maturation time of sporozoites in mosquitoes
+sigma_v:   Rate of gonotrophic cycle (mosquito feeding cycle)
+beta_hv:   Probability of transmission from mosquito to human
+beta_vh:   Probability of transmission from human to mosquito
+xi:        Lifespan of parasites in mosquito salivary glands
+"""
+# --------------------------------------------------------------------------------------------- #
 def compute_propensities(self):
     # División para cada uno de los estados ya sea infección o susceptibilidad #
     inf_mos = (self.X == self.MC) | (self.X == self.MPC)
@@ -8,14 +29,11 @@ def compute_propensities(self):
     sus_mos = (self.X == self.MS) | (self.X == self.MC) | (self.X == self.MPC)
     
     # Calculamos las fuerzas de infección de humanos y vectores #
-    prop_bites_h = (self.epi["sigma_v"] * self.num_mos * self.epi["sigma_h"]) / (
-        self.epi["sigma_v"] * self.num_mos + self.epi["sigma_h"] * self.num_hum
-    )
-    prop_bites_m = (self.epi["sigma_v"] * self.epi["sigma_h"] * self.num_hum) / (
-        self.epi["sigma_v"] * self.num_mos + self.epi["sigma_h"] * self.num_hum
-    )
+    prop_bites_h = (self.epi["sigma_v"] * self.num_mos * self.epi["sigma_h"]) / (self.epi["sigma_v"] * self.num_mos + self.epi["sigma_h"] * self.num_hum)
+    prop_bites_m = (self.epi["sigma_v"] * self.epi["sigma_h"] * self.num_hum) / (self.epi["sigma_v"] * self.num_mos + self.epi["sigma_h"] * self.num_hum)
 
     lambda_h = prop_bites_h * self.epi["beta_hv"] * (inf_mos.sum() / self.num_mos)
+    
     lambda_v = prop_bites_m * self.epi["beta_vh"] * (inf_hum.sum() / self.num_hum)
     
     # Calculamos la propensity para cada uno de los eventos descritos #
@@ -26,7 +44,8 @@ def compute_propensities(self):
     
     # Guardar en el objeto del modelo
     self.propensities = np.hstack([prop_inf_h, prop_inf_v, prop_death_mos, prop_clearance_hum])
-
+    return(self.propensities)
+# --------------------------------------------------------------------------------------------- #
 def next_time_event(self):
     # Determine next event and time increment #
     total = self.propensities.sum()
@@ -36,8 +55,8 @@ def next_time_event(self):
     idx = np.searchsorted(cum, r * total)
     self.transitionPlayer = idx % len(self.X)
     self.transitionType = self.events[idx // len(self.X)]
-    
-
+    return (self.tau, self.transitionPlayer, self.transitionType)
+# --------------------------------------------------------------------------------------------- #
 def variate_population(self):
     # Apply state transitions based on event type #
     if self.transitionType == "lambda_humans":

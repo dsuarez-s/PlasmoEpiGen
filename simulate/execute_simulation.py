@@ -60,5 +60,5 @@ model = MalariaEGModel(epi_parameters = epidemiological_parameters,
                        clone_distribution_human = dist_humans,
                        clone_distribution_mosquito = dist_mosquitoes)
 # ------------------------------------------------------------------ #
-model.run(tmax=365)
+model.run(tmax=50)
 # ------------------------------------------------------------------ #      
