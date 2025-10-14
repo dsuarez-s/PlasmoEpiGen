@@ -5,7 +5,7 @@ import sys
 
 iter_number = sys.argv[1]
 num_hap = int(sys.argv[2])
-num_bites = int(sys.argv[3])
+num_bites = float(sys.argv[3])
 
 ##############################
 # Parameters and References ##
@@ -21,7 +21,7 @@ sigma_v = 3.1   # Rate of gonotrophic cycle (mosquito feeding cycle) [3] #
 beta_hv = 0.48  # Probability of transmission from mosquito to human [5] #
 beta_vh = 0.022 # Probability of transmission from human to mosquito [5] #
 xi = 55         # Lifespan of parasites in mosquito salivary glands [4] #
-xi = 25         # Lifespan of parasites in mosquito salivary glands [4] #
+#xi = 25         # Lifespan of parasites in mosquito salivary glands [4] #
 
 # References #
 
@@ -60,5 +60,5 @@ model = MalariaEGModel(epi_parameters = epidemiological_parameters,
                        clone_distribution_human = dist_humans,
                        clone_distribution_mosquito = dist_mosquitoes)
 # ------------------------------------------------------------------ #
-model.run(tmax=50)
+model.run(tmax=100)
 # ------------------------------------------------------------------ #      

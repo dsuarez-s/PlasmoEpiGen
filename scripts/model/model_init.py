@@ -14,19 +14,20 @@ from scripts.observables.multiplicity_of_infection import measure_moi
 def init_model_state(self, epi_parameters, pop_parameters,name_folder,
                      iteration, distribution, genomes, clone_distribution_human,
                      clone_distribution_mosquito, heapq):
-    self.genomes =genomes
+    self.genomes = genomes
     self.event_queue = []            
     heapq.heapify(self.event_queue)  
     size_pool = len(genomes)
+    
     # Initialize model parameters #
     self.config = {"name_folder": name_folder,"size_pool": size_pool,
                    "iteration": iteration, "distribution": distribution}
 
-    self.observables_humans_mean = {"MOI": [],"IBD": defaultdict(list), "SH": [], "PI": []}
-    self.observables_humans_median = {"MOI": [],"IBD": defaultdict(list), "SH": [], "PI": []}
+    self.IBD_humans_mean = {}
+    self.IBD_humans_median = {}
 
-    self.observables_mosquitoes_mean = {"MOI": [],"IBD": defaultdict(list), "SH": [], "PI": []}
-    self.observables_mosquitoes_median = {"MOI": [],"IBD": defaultdict(list), "SH": [], "PI": []}
+    self.IBD_mosquitoes_mean = {}
+    self.IBD_mosquitoes_median = {}
 
     # Initialize epidemiological  parameters #
     epi_keys = ["sigma_h", "gamma", "delta", "alpha_H", "alpha_M", "sigma_v", "beta_hv", "beta_vh", "xi"]  
@@ -41,7 +42,6 @@ def init_model_state(self, epi_parameters, pop_parameters,name_folder,
 
     self.num_mos = pop_parameters["Mos"]
     self.num_hum = pop_parameters["Hum"]        
-
 
     # 1) Ruta de la carpeta y del archivo
     folder = self.config["name_folder"]
@@ -65,7 +65,7 @@ def init_model_state(self, epi_parameters, pop_parameters,name_folder,
                                       clone_distribution_mosquito = clone_distribution_mosquito,
                                       event_queue = self.event_queue)      
 
-
+    self.initial_genomes = init_genomes[0]
     self.parasitic_populations = init_genomes[0]
     self.mature_matrix = init_genomes[1]
     self.immature_matrix = init_genomes[2]  

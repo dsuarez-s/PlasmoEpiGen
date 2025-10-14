@@ -8,9 +8,11 @@ Functions:
 import random  
 import numpy as np  
 from scipy.sparse import csr_matrix
+import heapq
+
 
 # Reset a human to susceptible and clear its parasite genomes #
-def func_toHS(transition_Player, X_matrix, immature_matrix, mature_matrix, HS_code):
+def func_toHS(event_queue, transition_Player, X_matrix, immature_matrix, mature_matrix, HS_code):
     
     # Set the mosquito state to MS (susceptible) #
     X_matrix[transition_Player] = HS_code
@@ -25,43 +27,38 @@ def func_toHS(transition_Player, X_matrix, immature_matrix, mature_matrix, HS_co
     immature_m[:, transition_Player] = 0
     immature_matrix = immature_m.tocsr()
     
+    event_queue = [evt for evt in event_queue if evt[3] != transition_Player]
+    heapq.heapify(event_queue)
     # Return updated state and genome matrices #
-    return X_matrix, mature_matrix, immature_matrix
+    return X_matrix, mature_matrix, immature_matrix, event_queue
 
 # Select parasite genomes for transmission from a human host to a mosquito vector #
-def human_to_mosquito(X, mature_matrix, HM_code, HPC_code):
+def human_to_mosquito(X, mature_matrix, HM_code, HPC_code, rng=None):
     
+    rng = np.random.default_rng() if rng is None else rng
+
     # Indices of currently infected humans (monoclonal or polyclonal) #
     humans_indices = np.where((X == HM_code) | (X == HPC_code))[0]
-    selected_human = random.choice(humans_indices)
+    if humans_indices.size == 0:
+        raise ValueError("No hay humanos infectados (HC/HPC) disponibles para transmisión.")
+        
+    selected_human = humans_indices[rng.integers(0, humans_indices.size)]
+
+    col = mature_matrix.getcol(selected_human).tocoo()
+    positions = col.row
+    weights   = col.data
     
-    # Extract the count vector for the selected mosquito as a dense array #
-    gen_information = mature_matrix.getcol(selected_human).tocoo()
-    present_genomes = gen_information.row 
-    weights   = gen_information.data
-    
-    # Raise an error if no haplotype is present (this should not happen) #
-    if len(present_genomes) == 0:
+    if positions.size == 0:
         raise ValueError(f"No haplotypes found for human index {selected_human}")
 
-    # If exactly one haplotype is present, return it directly #
-    if len(present_genomes) == 1:
-        return [int(present_genomes[0])]
-    
-    # Normalize weights to sum to 1 to obtain probabilities #
-    probabilities = weights / weights.sum()
+    wsum = weights.sum()
+    if wsum <= 0:
+        raise ValueError(f"Pesos inválidos (suma <= 0) para el humano {selected_human}")
+    probs = weights / wsum
 
-    # Convert indices and probabilities to lists #
-    positions = list(present_genomes)
-    probs = list(probabilities)
+    k = int(rng.integers(1, positions.size + 1))
 
-    # Randomly choose how many haplotypes to transmit #
-    k = np.random.randint(1, len(positions) + 1)
+    chosen = rng.choice(positions, size=k, replace=True, p=probs)
 
-    # Sample k unique haplotypes weighted by their probabilities #
-    chosen = np.random.choice(positions, size=k, replace=True, p=probs)
-    
-    # Convert the result to a list and delete duplicates #
-    chosen = list(set(chosen))
-    
-    return chosen
+    unique_haplos = np.unique(chosen)
+    return [int(i) for i in unique_haplos]

@@ -21,6 +21,8 @@ dict
     {"humans": pi_value, "mosquitoes": pi_value}
 """
 
+
+# MEASURE_NUCLEOTIDE_DIVERSITY#
 def measure_nucleotide_diversity(mature_matrix, X, parasitic_populations,
                                  HS=0, HM=1, HPC=2,
                                  MS=3, MC=4, MPC=5):
@@ -35,13 +37,15 @@ def measure_nucleotide_diversity(mature_matrix, X, parasitic_populations,
             raise ValueError(f"No {host_type} found in X")
 
         # Abundances of haplotypes in this group
-        hap_counts = np.array(mature_matrix[:, inds].sum(axis=1)).flatten()
-        hap_indices = np.where(hap_counts > 0)[0]
-
+        sub_matrix = mature_matrix[:, inds]
+        hap_indices = np.flatnonzero(sub_matrix.getnnz(axis=1))
         if hap_indices.size < 2:
             results[host_type] = 0.0
             continue
-
+            
+        hap_sum_sparse = sub_matrix.sum(axis=1)
+        hap_counts = np.asarray(hap_sum_sparse).ravel()
+        
         # Normalize abundances to probabilities
         p = hap_counts[hap_indices] / hap_counts[hap_indices].sum()
 
@@ -53,4 +57,4 @@ def measure_nucleotide_diversity(mature_matrix, X, parasitic_populations,
 
         results[host_type] = round(float(pi * 2), 2) # symmetry correction
 
-    return results
+    return results["humans"] , results["mosquitoes"]

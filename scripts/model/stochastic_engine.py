@@ -6,7 +6,7 @@ from scripts.transitions.mosquitoes_events import func_toMS, mosquito_to_human
 from scripts.transitions.humans_events import human_to_mosquito, func_toHS
 
 # Recombination y limpieza de haplotipos #
-from scripts.helpers.state_inspectors import update_matrices, classification_S_M_PC
+from scripts.helpers.state_inspectors import classification_S_M_PC
 from scripts.genetics.recombination import recombination
 
 """
@@ -25,8 +25,8 @@ def compute_propensities(self):
     # División para cada uno de los estados ya sea infección o susceptibilidad #
     inf_mos = (self.X == self.MC) | (self.X == self.MPC)
     inf_hum = (self.X == self.HM) | (self.X == self.HPC)
-    sus_hum = (self.X == self.HS) | (self.X == self.HM) | (self.X == self.HPC)
-    sus_mos = (self.X == self.MS) | (self.X == self.MC) | (self.X == self.MPC)
+    all_hum = (self.X == self.HS) | (self.X == self.HM) | (self.X == self.HPC)
+    all_mos = (self.X == self.MS) | (self.X == self.MC) | (self.X == self.MPC)
     
     # Calculamos las fuerzas de infección de humanos y vectores #
     prop_bites_h = (self.epi["sigma_v"] * self.num_mos * self.epi["sigma_h"]) / (self.epi["sigma_v"] * self.num_mos + self.epi["sigma_h"] * self.num_hum)
@@ -37,9 +37,9 @@ def compute_propensities(self):
     lambda_v = prop_bites_m * self.epi["beta_vh"] * (inf_hum.sum() / self.num_hum)
     
     # Calculamos la propensity para cada uno de los eventos descritos #
-    prop_inf_h = lambda_h * sus_hum
-    prop_inf_v = lambda_v * sus_mos
-    prop_death_mos = (1 / self.epi["delta"]) * inf_mos
+    prop_inf_h = lambda_h * all_hum
+    prop_inf_v = lambda_v * all_mos
+    prop_death_mos = (1 / self.epi["delta"]) * all_mos
     prop_clearance_hum = (1 / self.epi["gamma"]) * inf_hum
     
     # Guardar en el objeto del modelo
@@ -49,13 +49,19 @@ def compute_propensities(self):
 def next_time_event(self):
     # Determine next event and time increment #
     total = self.propensities.sum()
-    cum = np.cumsum(self.propensities)
-    r = np.random.rand()
-    self.tau = np.random.exponential(1 / total)
-    idx = np.searchsorted(cum, r * total)
-    self.transitionPlayer = idx % len(self.X)
-    self.transitionType = self.events[idx // len(self.X)]
-    return (self.tau, self.transitionPlayer, self.transitionType)
+    if total <= 0:
+        self.tau = 1
+        self.transitionPlayer = None
+        self.transitionType = None
+        return (self.tau, self.transitionPlayer, self.transitionType)
+    else:
+        cum = np.cumsum(self.propensities)
+        r = np.random.rand()
+        self.tau = np.random.exponential(1 / total)
+        idx = np.searchsorted(cum, r * total)
+        self.transitionPlayer = idx % len(self.X)
+        self.transitionType = self.events[idx // len(self.X)]
+        return (self.tau, self.transitionPlayer, self.transitionType)
 # --------------------------------------------------------------------------------------------- #
 def variate_population(self):
     # Apply state transitions based on event type #
@@ -74,7 +80,6 @@ def variate_population(self):
                 type_event = "Gametocytes Maturation"
                 agent = self.transitionPlayer
                 heapq.heappush(self.event_queue, (t_event, type_event, genome_ID, agent))
-
 
         self.X = classification_S_M_PC(transitionPlayer=self.transitionPlayer,
                                        X_matrix=self.X,
@@ -117,23 +122,14 @@ def variate_population(self):
 
     elif self.transitionType == "human_clearance":
 
-        matrices = func_toHS(transition_Player = self.transitionPlayer,
-                             X_matrix = self.X,
-                             immature_matrix = self.immature_matrix,
-                             mature_matrix = self.mature_matrix,
-                             HS_code = self.HS)
-
-        self.X = matrices[0]
-        self.mature_matrix = matrices[1]
-        self.immature_matrix = matrices[2]
-
-        pop_matrix = update_matrices(mature_matrix = self.mature_matrix,
-                                     immature_matrix = self.immature_matrix,
-                                     parasitic_populations = self.parasitic_populations)
-
-        self.parasitic_populations = pop_matrix[0]
-        self.mature_matrix = pop_matrix[1]
-        self.immature_matrix = pop_matrix[2]
+        matrices_event_queue = func_toHS(transition_Player = self.transitionPlayer,
+                                         X_matrix = self.X,
+                                         immature_matrix = self.immature_matrix,
+                                         mature_matrix = self.mature_matrix,
+                                         HS_code = self.HS,
+                                         event_queue = self.event_queue)
+        
+        self.X,self.mature_matrix, self.immature_matrix,self.event_queue  = matrices_event_queue
 
         self.X = classification_S_M_PC(transitionPlayer=self.transitionPlayer,
                                        X_matrix=self.X,
@@ -141,24 +137,15 @@ def variate_population(self):
 
     else:
         # Mosquito death/reset to susceptible #
-        matrices = func_toMS(transition_Player = self.transitionPlayer,
-                             X_matrix = self.X,
-                             immature_matrix = self.immature_matrix,
-                             mature_matrix = self.mature_matrix,
-                             MS_code = self.MS)
-
-        self.X = matrices[0]
-        self.mature_matrix = matrices[1]
-        self.immature_matrix = matrices[2]
-
-        pop_matrix = update_matrices(mature_matrix = self.mature_matrix,
-                                     immature_matrix = self.immature_matrix,
-                                     parasitic_populations = self.parasitic_populations)
-
-        self.parasitic_populations = pop_matrix[0]
-        self.mature_matrix = pop_matrix[1]
-        self.immature_matrix = pop_matrix[2]
-
+        
+        matrices_event_queue = func_toMS(transition_Player = self.transitionPlayer,X_matrix = self.X,
+                                        immature_matrix = self.immature_matrix,
+                                        mature_matrix = self.mature_matrix,
+                                        MS_code = self.MS,
+                                        event_queue = self.event_queue)
+        
+        self.X,self.mature_matrix, self.immature_matrix,self.event_queue  = matrices_event_queue
+        
         self.X = classification_S_M_PC(transitionPlayer=self.transitionPlayer,
                                        X_matrix=self.X,
                                        mature_matrix=self.mature_matrix)

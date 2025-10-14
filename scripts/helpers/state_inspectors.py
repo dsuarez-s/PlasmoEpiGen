@@ -22,12 +22,19 @@ def classification_S_M_PC(transitionPlayer, X_matrix, mature_matrix,
 # -------------------------------------------------------------------------------------- #
 # -------------------------------------------------------------------------------------- #
 
-def update_matrices(mature_matrix, immature_matrix, parasitic_populations):
-    # Remove extinct haplotypes from matrices #
-    combined = mature_matrix + immature_matrix
-    alive = np.asarray(combined.sum(axis=1)).squeeze() != 0
+# def update_matrices(mature_matrix, immature_matrix, parasitic_populations):
     
-    
-    return (parasitic_populations[alive], mature_matrix[alive], immature_matrix[alive])
+#     # Determinar filas vivas #
+#     alive_m = np.asarray(mature_matrix.getnnz(axis=1)).ravel()
+#     alive_i = np.asarray(immature_matrix.getnnz(axis=1)).ravel()
+#     alive = (alive_m + alive_i) > 0
+
+#     n_rows = alive.shape[0]
+
+#     # Mapa de índices: -1 para filas podadas; 0..n_alive-1 para filas vivas
+#     old_to_new = np.full(n_rows, -1, dtype=np.int64)
+#     old_to_new[alive] = np.arange(int(alive.sum()), dtype=np.int64)
+
+#     return (parasitic_populations[alive], mature_matrix[alive], immature_matrix[alive], old_to_new )
 
 # -------------------------------------------------------------------------------------- #

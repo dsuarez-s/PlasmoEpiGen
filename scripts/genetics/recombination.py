@@ -64,6 +64,8 @@ def recombination(inoculated_genomes, parasitic_populations,
         if existing.size > 0:
             idx = int(existing[0])
             to_infect.append(idx)
+            if (immature_matrix[existing].nnz  == 0) and (mature_matrix[existing].nnz == 0):
+                generation_events += 1
         else:
             # Append child to the end of the ordered array
             parasitic_populations = np.append(parasitic_populations, child)

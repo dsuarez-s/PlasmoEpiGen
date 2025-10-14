@@ -36,7 +36,10 @@ def measure_moi(mature_matrix, X, HS=0, HM=1, HPC=2, MS=3, MC=4, MPC=5):
     humans_mask = np.isin(X, [HS, HM, HPC])
     mosq_mask   = np.isin(X, [MS, MC, MPC])
 
-    moi_humans = moi_per_ind[humans_mask].tolist()
-    moi_mosq   = moi_per_ind[mosq_mask].tolist()
+    moi_humans_mean = round(np.mean(moi_per_ind[humans_mask].tolist()),2)
+    moi_mosq_mean   = round(np.mean(moi_per_ind[mosq_mask].tolist()),2)
+    
+    moi_humans_median = round(np.median(moi_per_ind[humans_mask].tolist()),2)
+    moi_mosq_median   = round(np.median(moi_per_ind[mosq_mask].tolist()),2)
 
-    return moi_humans, moi_mosq
+    return moi_humans_mean, moi_mosq_mean, moi_humans_median, moi_mosq_median

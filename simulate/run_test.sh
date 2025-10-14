@@ -11,4 +11,4 @@ path_venv="/gsap/garage-protistvector/MalariaKmers/Malaria_Deep-mers/Virtual_Env
 source "$path_venv/bin/activate"
 
 echo "Ejecución número $i"
-python3 -m $PY_SCRIPT "$i" 2 40
+python3 -m $PY_SCRIPT "$i" 2 .5
