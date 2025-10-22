@@ -21,7 +21,6 @@ sigma_v = 3.1   # Rate of gonotrophic cycle (mosquito feeding cycle) [3] #
 beta_hv = 0.48  # Probability of transmission from mosquito to human [5] #
 beta_vh = 0.022 # Probability of transmission from human to mosquito [5] #
 xi = 55         # Lifespan of parasites in mosquito salivary glands [4] #
-#xi = 25         # Lifespan of parasites in mosquito salivary glands [4] #
 
 # References #
 
