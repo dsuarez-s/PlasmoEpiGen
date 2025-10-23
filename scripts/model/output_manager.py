@@ -22,7 +22,19 @@ def save_information(self, time_step):
     ratio_reco = (self.generation_events / self.total_events) if self.total_events > 0 else 0
     # Número de haplotipos actuales #
     num_haplotypes = len(self.parasitic_populations)
+    
+    ########################################
+    inf_mos = (self.X == self.MC) | (self.X == self.MPC)
+    inf_hum = (self.X == self.HM) | (self.X == self.HPC)
+    
+    prop_bites_h = (self.epi["sigma_v"] * self.num_mos * self.epi["sigma_h"]) / (self.epi["sigma_v"] * self.num_mos + self.epi["sigma_h"] * self.num_hum)
+        
+    prop_bites_m = (self.epi["sigma_v"] * self.epi["sigma_h"] * self.num_hum) / (self.epi["sigma_v"] * self.num_mos + self.epi["sigma_h"] * self.num_hum)
 
+    lambda_h = np.round(365*prop_bites_h * self.epi["beta_hv"] * (inf_mos.sum() / self.num_mos),2)
+    lambda_v = np.round(365*prop_bites_m * self.epi["beta_vh"] * (inf_hum.sum() / self.num_hum),2)
+    ########################################
+    
     # Conteo de cada estado (en orden: HS, HM, HPC, MS, MC, MPC) #
     nums = [(self.X == self.HS).sum(), (self.X == self.HM).sum(),
             (self.X == self.HPC).sum(), (self.X == self.MS).sum(),
@@ -81,7 +93,7 @@ def save_information(self, time_step):
                         "ratio_reco", "num_haplotypes",
                         "MOI_Humans_mean", "MOI_Humans_median",
                         "MOI_Mosquitoes_mean", "MOI_Mosquitoes_median",
-                        "SH_Humans", "SH_Mosquitoes", "PI_Humans", "PI_Mosquitoes",]
+                        "SH_Humans", "SH_Mosquitoes", "PI_Humans", "PI_Mosquitoes","lambda_h", "lambda_v"]
         # Campos IBD por cepa, agrupados por métrica para facilitar lectura #
         header_parts += [f"h_mean_{s}"   for s in self.initial_genomes]
         header_parts += [f"h_median_{s}" for s in self.initial_genomes]
@@ -97,6 +109,7 @@ def save_information(self, time_step):
                  + [to_str_or_nan(ratio_reco), str(num_haplotypes)]
                  + [str(moi_h_mean), str(moi_h_median), str(moi_m_mean), str(moi_m_median)]
                  + [str(sh_humans), str(sh_mosquitoes), str(pi_humans), str(pi_mosquitoes)]
+                 + [str(lambda_h),str(lambda_v)] 
                  + ls_h_mean + ls_h_median + ls_m_mean + ls_m_median)
 
     # Escritura en modo append, garantizando separadores correctos #

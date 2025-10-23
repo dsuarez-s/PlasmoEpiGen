@@ -48,7 +48,7 @@ class MalariaEGModel:
                     (self.X == self.HPC).sum(), (self.X == self.MS).sum(),
                     (self.X == self.MC).sum(), (self.X == self.MPC).sum()]
             
-            print(nums)
+
             self.propensities = compute_propensities(self)
             self.tau, self.transitionPlayer, self.transitionType = next_time_event(self)
             self.actual_time += self.tau
@@ -63,6 +63,6 @@ class MalariaEGModel:
                 
             variate_population(self) 
             while self.actual_time >= t_step and t_step <= tmax:
-                print(nums)
+
                 save_information(self, time_step = t_step)
-                t_step += .2
+                t_step += 1.0

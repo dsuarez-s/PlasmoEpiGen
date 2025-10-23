@@ -33,13 +33,23 @@ def measure_moi(mature_matrix, X, HS=0, HM=1, HPC=2, MS=3, MC=4, MPC=5):
     moi_per_ind = np.array(presence.sum(axis=0)).ravel()
 
     # Partition into humans vs mosquitoes
-    humans_mask = np.isin(X, [HS, HM, HPC])
-    mosq_mask   = np.isin(X, [MS, MC, MPC])
+    humans_mask = np.isin(X, [HM, HPC])
+    mosq_mask   = np.isin(X, [MC, MPC])
 
-    moi_humans_mean = round(np.mean(moi_per_ind[humans_mask].tolist()),2)
-    moi_mosq_mean   = round(np.mean(moi_per_ind[mosq_mask].tolist()),2)
-    
-    moi_humans_median = round(np.median(moi_per_ind[humans_mask].tolist()),2)
-    moi_mosq_median   = round(np.median(moi_per_ind[mosq_mask].tolist()),2)
+    if not np.any(humans_mask):
+        moi_humans_mean = moi_humans_median = 0.0
+    else:
+        h = moi_per_ind[humans_mask]
+        moi_humans_mean   = float(np.mean(h))
+        moi_humans_median = float(np.median(h))
 
-    return moi_humans_mean, moi_mosq_mean, moi_humans_median, moi_mosq_median
+    # Mosquitos
+    if not np.any(mosq_mask):
+        moi_mosq_mean = moi_mosq_median = 0.0
+    else:
+        m = moi_per_ind[mosq_mask]
+        moi_mosq_mean   = float(np.mean(m))
+        moi_mosq_median = float(np.median(m))
+
+    return (round(moi_humans_mean, 2),round(moi_mosq_mean, 2),
+            round(moi_humans_median, 2),round(moi_mosq_median, 2))

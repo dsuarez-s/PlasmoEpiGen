@@ -12,15 +12,15 @@ num_bites = float(sys.argv[3])
 ##############################
 
 
-sigma_h = int(num_bites)    # Number of bites per mosquito  #
+sigma_h = float(num_bites)    # Number of bites per mosquito  #
 gamma = 50     # Recovery time of a human from infection [5] #
 delta = 90.4    # Lifespan of mosquitoes [4] #
-alpha_H = 11    # Maturation time of gametocytes in humans [2] #
-alpha_M = 14    # Maturation time of sporozoites in mosquitoes [1] #
+alpha_H = 11    # Maturation time of gametocytes in humans [2] #*
+alpha_M = 14    # Maturation time of sporozoites in mosquitoes [1] #*
 sigma_v = 3.1   # Rate of gonotrophic cycle (mosquito feeding cycle) [3] #
 beta_hv = 0.48  # Probability of transmission from mosquito to human [5] #
 beta_vh = 0.022 # Probability of transmission from human to mosquito [5] #
-xi = 55         # Lifespan of parasites in mosquito salivary glands [4] #
+xi = 55         # Lifespan of parasites in mosquito salivary glands [4] #*
 
 # References #
 
@@ -59,5 +59,5 @@ model = MalariaEGModel(epi_parameters = epidemiological_parameters,
                        clone_distribution_human = dist_humans,
                        clone_distribution_mosquito = dist_mosquitoes)
 # ------------------------------------------------------------------ #
-model.run(tmax=100)
+model.run(tmax=365*3)
 # ------------------------------------------------------------------ #      

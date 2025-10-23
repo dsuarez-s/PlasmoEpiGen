@@ -35,12 +35,14 @@ def compute_propensities(self):
     lambda_h = prop_bites_h * self.epi["beta_hv"] * (inf_mos.sum() / self.num_mos)
     
     lambda_v = prop_bites_m * self.epi["beta_vh"] * (inf_hum.sum() / self.num_hum)
+    #print(self.actual_time,prop_bites_h,prop_bites_m,lambda_h,lambda_v)
     
     # Calculamos la propensity para cada uno de los eventos descritos #
     prop_inf_h = lambda_h * all_hum
     prop_inf_v = lambda_v * all_mos
     prop_death_mos = (1 / self.epi["delta"]) * all_mos
     prop_clearance_hum = (1 / self.epi["gamma"]) * inf_hum
+    
     
     # Guardar en el objeto del modelo
     self.propensities = np.hstack([prop_inf_h, prop_inf_v, prop_death_mos, prop_clearance_hum])

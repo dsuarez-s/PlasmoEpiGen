@@ -55,7 +55,6 @@ def validate_inputs_ibd(mature_matrix, parasitic_populations, genomes):
 def precompute_ibd_table( mature_matrix: csr_matrix, parasitic_populations: np.ndarray,
                          genomes: Dict[Any, str]) -> Dict[str, Dict[int, float]]:
     
-    print(parasitic_populations)
     # --- Validaciones clave #
     L = validate_inputs_ibd(mature_matrix, parasitic_populations, genomes)
     
@@ -63,7 +62,7 @@ def precompute_ibd_table( mature_matrix: csr_matrix, parasitic_populations: np.n
     founder_lists = {name: np.array(list(seq)) for name, seq in genomes.items()}
     # Haplótipos activos (CSR) #
     active_haplos = np.flatnonzero(mature_matrix.getnnz(axis=1))
-    print("active_haplos", active_haplos)
+
     # Si no hay activos, devolver diccionario vacío por fundador
     if active_haplos.size == 0:
         return {name: {} for name in founder_lists.keys()}
@@ -75,7 +74,6 @@ def precompute_ibd_table( mature_matrix: csr_matrix, parasitic_populations: np.n
         for name, founder_seq in founder_lists.items():
             matches = (hap_seq == founder_seq).sum()
             ibd_table[name][int(h)] = round(matches / L,2)
-    print(ibd_table)
     return ibd_table
 
 
@@ -108,9 +106,9 @@ def measure_ibd_relative_to_founders(mature_matrix: csr_matrix,X: np.ndarray,
                 continue
 
             avg_ibd = float(np.mean(vals))
-            if X[ind] in (HS, HM, HPC):
+            if X[ind] in (HM, HPC):
                 results[name]["humans"].append(round(avg_ibd, 2))
-            elif X[ind] in (MS, MC, MPC):
+            elif X[ind] in (MC, MPC):
                 results[name]["mosquitoes"].append(round(avg_ibd, 2))
 
     return results

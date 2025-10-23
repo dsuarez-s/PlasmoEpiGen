@@ -31,10 +31,11 @@ def measure_nucleotide_diversity(mature_matrix, X, parasitic_populations,
     L = len(parasitic_populations[0])
     results = {}
 
-    for host_type, states in [("humans", [HS, HM, HPC]), ("mosquitoes", [MS, MC, MPC])]:
+    for host_type, states in [("humans", [HM, HPC]), ("mosquitoes", [MC, MPC])]:
         inds = [i for i, state in enumerate(X) if state in states]
         if len(inds) == 0:
-            raise ValueError(f"No {host_type} found in X")
+            results[host_type] = 0.0
+            #raise ValueError(f"No {host_type} found in X")
 
         # Abundances of haplotypes in this group
         sub_matrix = mature_matrix[:, inds]

@@ -1,1 +1,4 @@
 .ipynb_checkpoints/
+test/results/
+test/Figures/
+simulate/logs/
