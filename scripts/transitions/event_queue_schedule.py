@@ -31,20 +31,10 @@ def event_queue_execution(event_queue, actual_time, immature_matrix, mature_matr
             immature_matrix[genome_ID, agent] -= 1
             mature_matrix  [genome_ID, agent] += 1
 
-            if(evt_type == "Sporozoites Maturation"):
-                t_next = next_in_queue_time + epi_dict["xi"]         
-                heapq.heappush(event_queue,(t_next, "Sporozoites Clearance", genome_ID, agent))
-
             X = classification_S_M_PC(transitionPlayer=agent,
                                       X_matrix=X,
                                       mature_matrix=mature_matrix)
 
-        elif evt_type == "Sporozoites Clearance":
-            mature_matrix[genome_ID, agent] -= 1
-
-            X = classification_S_M_PC(transitionPlayer = agent,
-                                      X_matrix = X,
-                                      mature_matrix = mature_matrix)
     
     # Verificación de valores negativos en las matrices #
     if (immature_matrix.data < 0).any():

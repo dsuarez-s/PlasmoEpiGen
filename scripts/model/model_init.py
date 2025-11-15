@@ -30,7 +30,7 @@ def init_model_state(self, epi_parameters, pop_parameters,name_folder,
     self.IBD_mosquitoes_median = {}
 
     # Initialize epidemiological  parameters #
-    epi_keys = ["sigma_h", "gamma", "delta", "alpha_H", "alpha_M", "sigma_v", "beta_hv", "beta_vh", "xi"]  
+    epi_keys = ["sigma_h", "gamma", "delta", "alpha_H", "alpha_M", "sigma_v", "beta_hv", "beta_vh"]  
     self.epi = {key: val for key, val in zip(epi_keys, epi_parameters)}   
 
     # Time and state counters #

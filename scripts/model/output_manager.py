@@ -20,8 +20,12 @@ def to_str_or_nan(value):
 def save_information(self, time_step):
     # Calcula razón de recombinación segura ante división por cero #
     ratio_reco = (self.generation_events / self.total_events) if self.total_events > 0 else 0
+    
     # Número de haplotipos actuales #
-    num_haplotypes = len(self.parasitic_populations)
+    alive_m = np.asarray(self.mature_matrix.getnnz(axis=1)).ravel()
+    alive_i = np.asarray(self.immature_matrix.getnnz(axis=1)).ravel()
+    alive = (alive_m + alive_i) > 0 
+    num_haplotypes = alive.sum()
     
     ########################################
     inf_mos = (self.X == self.MC) | (self.X == self.MPC)

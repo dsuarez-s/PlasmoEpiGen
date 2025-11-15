@@ -4,26 +4,25 @@ import numpy as np
 import sys
 
 iter_number = sys.argv[1]
-num_hap = int(sys.argv[2])
+init_gen_div = int(sys.argv[2])
 num_bites = float(sys.argv[3])
+num_hum = int(sys.argv[4])
+mos_x_hum = int(sys.argv[5])
 
 ##############################
 # Parameters and References ##
 ##############################
 
-
 sigma_h = float(num_bites)    # Number of bites per mosquito  #
-gamma = 50     # Recovery time of a human from infection [5] #
-delta = 90.4    # Lifespan of mosquitoes [4] #
+gamma = 30     # Recovery time of a human from infection [5] #
+delta = 20    # Lifespan of mosquitoes [4] #
 alpha_H = 11    # Maturation time of gametocytes in humans [2] #*
 alpha_M = 14    # Maturation time of sporozoites in mosquitoes [1] #*
 sigma_v = 3.1   # Rate of gonotrophic cycle (mosquito feeding cycle) [3] #
-beta_hv = 0.48  # Probability of transmission from mosquito to human [5] #
-beta_vh = 0.022 # Probability of transmission from human to mosquito [5] #
-xi = 55         # Lifespan of parasites in mosquito salivary glands [4] #*
+beta_hv = 0.2  # Probability of transmission from mosquito to human [5] #
+beta_vh = 0.07 # Probability of transmission from human to mosquito [5] #
 
 # References #
-
 # [1] Dong, Shengzhang, et al. Trends in Parasitology (2021).
 # [2] Sauerwein, Meta Roestenberg, Moorthy. Nature Rev Immunol (2011).
 # [3] Rúa et al. Memórias Do Instituto Oswaldo Cruz (2005).
@@ -33,18 +32,27 @@ xi = 55         # Lifespan of parasites in mosquito salivary glands [4] #*
 #################
 # Run the Model #
 #################
-if (num_hap == 2):
-    initial_genomes = { 0: "AAAAAA", 1: "BBBBBB"}
-elif (num_hap == 3):
-    initial_genomes = { 0: "AAAAAA", 1: "BBBBBB", 2: "CCCCCC"}
-elif (num_hap == 10):
-    initial_genomes = { 0: "AAAAAA", 1: "BBBBBB", 2: "CCCCCC", 3: "DDDDDD", 4: "EEEEEE", 
-                        5: "FFFFFF", 6: "GGGGGG", 7: "HHHHHH", 8: "IIIIII", 9: "JJJJJJ"}
+if (init_gen_div == 10):
+    initial_genomes = {0: "A"*75, 1: "A"*60 + "B"*15}
     
-dist_humans = {0: 0.2, 1:0.8} 
-dist_mosquitoes = {0: 0.2, 1:0.8} 
-epidemiological_parameters = [sigma_h, gamma, delta, alpha_H, alpha_M, sigma_v, beta_hv, beta_vh, xi]    
-population_parameters = {"Mos": 350 , "Hum": 50}
+elif (init_gen_div == 30):
+    initial_genomes = {0: "A"*75, 1: "A"*30 + "B"*45}
+
+elif (init_gen_div == 50):
+    initial_genomes = {0: "A"*75, 1: "B"*75}
+
+elif (init_gen_div == 75):
+    initial_genomes = {0: "A"*75, 1: "B"*75, 2: "C"*75, 3: "D"*75}
+
+elif (init_gen_div == 90):
+    initial_genomes = {0: "A"*75, 1: "B"*75, 2: "C"*75, 3: "D"*75, 4: "E"*75,
+                       5: "F"*75, 6: "G"*75, 7: "H"*75, 8: "I"*75, 9: "J"*75}
+
+    
+dist_humans = {0: 0.0, 1:1.0} 
+dist_mosquitoes = {0: 0} 
+epidemiological_parameters = [sigma_h, gamma, delta, alpha_H, alpha_M, sigma_v, beta_hv, beta_vh]    
+population_parameters = {"Mos": num_hum*mos_x_hum , "Hum": num_hum}
 
 iteration_name = f"proof_{iter_number}"
 name_fol = "test/results/num_genomes_" + str(len(initial_genomes)) + "_bitting_rate_" + str(num_bites)

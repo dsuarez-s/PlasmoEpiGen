@@ -18,7 +18,6 @@ alpha_M:   Maturation time of sporozoites in mosquitoes
 sigma_v:   Rate of gonotrophic cycle (mosquito feeding cycle)
 beta_hv:   Probability of transmission from mosquito to human
 beta_vh:   Probability of transmission from human to mosquito
-xi:        Lifespan of parasites in mosquito salivary glands
 """
 # --------------------------------------------------------------------------------------------- #
 def compute_propensities(self):
