@@ -1,6 +1,3 @@
-# -------------------------------- #
-# Part 1: Imports and Dependencies #
-# -------------------------------- #
 import numpy as np
 import os
 import heapq
@@ -10,16 +7,9 @@ import warnings
 from scipy.sparse import SparseEfficiencyWarning
 warnings.simplefilter("ignore", SparseEfficiencyWarning)
 
-# SparseEfficiencyWarning: Changing the sparsity structure of a csr_matrix is expensive.
-# lil_matrix is more efficient.
-# Podría cambiarse las matrices a lil_matrix 
-
-# imports relativos desde subpaquetes dentro del paquete `model`
 from .model_init import init_model_state
 from .stochastic_engine import compute_propensities, next_time_event, variate_population
 from .output_manager import save_information
-
-# imports globales # 
 from scripts.transitions.event_queue_schedule import event_queue_execution 
 
 class MalariaEGModel:
@@ -27,10 +17,9 @@ class MalariaEGModel:
                  name_folder, iteration, distribution, genomes,
                  clone_distribution_human, clone_distribution_mosquito):
         
-        # Model Initialization (__init__) #
         init_model_state(self,epi_parameters, pop_parameters,name_folder,
                          iteration, distribution, genomes, clone_distribution_human,
-                         clone_distribution_mosquito, heapq=heapq)
+                         clone_distribution_mosquito, heapq)
     
     # Main Simulation Loop #
     def run(self, tmax):

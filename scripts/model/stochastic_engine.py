@@ -138,7 +138,6 @@ def variate_population(self):
 
     else:
         # Mosquito death/reset to susceptible #
-        
         matrices_event_queue = func_toMS(transition_Player = self.transitionPlayer,X_matrix = self.X,
                                         immature_matrix = self.immature_matrix,
                                         mature_matrix = self.mature_matrix,

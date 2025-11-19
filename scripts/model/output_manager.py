@@ -98,6 +98,7 @@ def save_information(self, time_step):
                         "MOI_Humans_mean", "MOI_Humans_median",
                         "MOI_Mosquitoes_mean", "MOI_Mosquitoes_median",
                         "SH_Humans", "SH_Mosquitoes", "PI_Humans", "PI_Mosquitoes","lambda_h", "lambda_v"]
+        
         # Campos IBD por cepa, agrupados por métrica para facilitar lectura #
         header_parts += [f"h_mean_{s}"   for s in self.initial_genomes]
         header_parts += [f"h_median_{s}" for s in self.initial_genomes]

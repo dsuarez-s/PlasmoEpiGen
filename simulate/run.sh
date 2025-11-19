@@ -1,20 +1,23 @@
 #!/bin/bash
+set -euo pipefail
 
-# Nombre del script Python que quieres ejecutar #
-PY_SCRIPT="simulate.execute_simulation"
-set -e
-A="$1"   # 10 o 2
-B="$2"   # 0.01 ... 40
+# Definir las variables a trabajar #
+python_script="simulate.execute_simulation"
+init_gen_div="$1"   # 10 - 30 - 50 - 75 - 90 #
+num_bites="$2"   # 0.6 - 0.7 - 0.8 - 0.9 - 1.0 - 1.2 - 2 - 3 - 10 - 40 #  
+num_hum="$3" # 30 - 50 - 70 #
+mos_x_hum="$4" # 1 - 3 - 5 #
 
 cd /gsap/garage-protistvector/MalariaKmers/PlasmoEpiGen/
 
-# Activate virtual environment
+# Activate virtual environment #
 path_venv="/gsap/garage-protistvector/MalariaKmers/Malaria_Deep-mers/Virtual_Environments/locator_venv"
 source "$path_venv/bin/activate"
 
-# Bucle de 0 a 10 #
-for i in {0..10}
+# Number of iterations #
+total_it=10
+for it_num in $(seq 1 "$total_it")
 do
-    echo "Ejecución número $i"
-    python3 -m $PY_SCRIPT "$i" "$A" "$B"
+    echo "Iteration $it_num of $total_it "
+    python3 -m $python_script "$it_num" "$init_gen_div" "$num_bites" "$num_hum" "$mos_x_hum"
 done

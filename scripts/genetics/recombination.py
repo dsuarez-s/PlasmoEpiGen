@@ -8,7 +8,7 @@ def recombination(inoculated_genomes, parasitic_populations,
                   total_events, generation_events, dist_loci):
     
     # Check 1: Existen genomas para inocular #
-    if len(inoculated_genomes) == 0::
+    if len(inoculated_genomes) == 0:
             raise ValueError("No genomes inoculated for recombination")
     
     # Caso 1: Solo se inoculo un genoma, entonces no hay recombinación #

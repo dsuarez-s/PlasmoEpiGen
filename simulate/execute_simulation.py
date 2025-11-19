@@ -50,12 +50,12 @@ elif (init_gen_div == 90):
 
     
 dist_humans = {0: 0.0, 1:1.0} 
-dist_mosquitoes = {0: 0} 
+dist_mosquitoes = {0: 1.0} 
 epidemiological_parameters = [sigma_h, gamma, delta, alpha_H, alpha_M, sigma_v, beta_hv, beta_vh]    
 population_parameters = {"Mos": num_hum*mos_x_hum , "Hum": num_hum}
 
 iteration_name = f"proof_{iter_number}"
-name_fol = "test/results/num_genomes_" + str(len(initial_genomes)) + "_bitting_rate_" + str(num_bites)
+name_fol = f"test/results/IGD_{init_gen_div}_BR_{num_bites}_NH_{num_hum}_MxH_{mos_x_hum}"
 
 # ------------------------------------------------------------------ #
 model = MalariaEGModel(epi_parameters = epidemiological_parameters,

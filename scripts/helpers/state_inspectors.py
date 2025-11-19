@@ -5,15 +5,19 @@ def classification_S_M_PC(transitionPlayer, X_matrix, mature_matrix,
                           HS_code = 0, HM_code = 1, HPC_code = 2, 
                           MS_code = 3, MC_code = 4, MPC_code = 5):
     
-    humans_states = {HS_code, HM_code, HPC_code}
-    state = X_matrix[transitionPlayer]
-    # Update agent state based on genome presence #
-    num_genomes = mature_matrix.getcol(transitionPlayer).count_nonzero()
-
+    humans_states = [HS_code, HM_code, HPC_code] # Código de humanos #
+    state = X_matrix[transitionPlayer] # Estado actual #
+    num_genomes = mature_matrix[:, transitionPlayer].getnnz() # Haplotipos maduros #
+    
+    # Caso 1: No hay haplotipo maduros entonces estan sanos # 
     if num_genomes == 0:
         X_matrix[transitionPlayer] = HS_code if state in humans_states else MS_code
+        
+    # Caso 2: Solo hay haplotipo maduro entonces estan infectados monoclonalmente #     
     elif num_genomes == 1:
         X_matrix[transitionPlayer] = HM_code if state in humans_states else MC_code
+        
+    # Caso 3: Hay más de un haplotipo maduro entonces estan infectados policlonalmente #
     else:
         X_matrix[transitionPlayer] = HPC_code if state in humans_states else MPC_code
         

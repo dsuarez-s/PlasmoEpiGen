@@ -5,31 +5,45 @@ set -e
 path_script="./run.sh"
 
 # Listas de iteraciones #
-lst_A=('10' '2')                                           
-#lst_B=('0.1' '0.2' '0.3' '0.4' '0.5' '0.6' '0.7' '0.8' '0.9' '1.0' '2.0' '3.0' '4.0' '6.0' '7.0' '8.0' '9.0' ' 10' '20' '30' '40')    
-lst_B=('1.1' '1.2' '1.3' '1.4' '1.5' '1.6' '1.7' '1.8' '1.9')   
+# lst_init_gen_div=('10' '30' '50' '75' '90')
+# lst_num_bites=('0.6' '0.7' '0.8' '0.9' '1' '1.2' '2' '3' '10' '40')
+# lst_num_hum=('30' '50' '70')
+# lst_mos_x_hum=('1' '3' '5')
 
-# Carpetas de logs
+lst_init_gen_div=('50')
+lst_num_bites=('1.2')
+lst_num_hum=('50')
+lst_mos_x_hum=('1')
+ 
+# Carpetas de logs #
 log_err="./logs/logs_error"
 log_out="./logs/logs_out"
 mkdir -p "$log_err" "$log_out"
 
-# Iterar sobre todas las combinaciones posibles
-for A in "${lst_A[@]}"; do
-    for B in "${lst_B[@]}"; do
-        # Etiqueta simple para nombres (reemplaza . por p)
-        b_tag="${B//./p}"
+# Iterar sobre todas las combinaciones posibles #
+for init_gen_div in "${lst_init_gen_div[@]}"
+do
+    for num_bites in "${lst_num_bites[@]}"
+    do
+        for num_hum in "${lst_num_hum[@]}"
+        do 
+            for mos_x_hum in "${lst_mos_x_hum[@]}"
+            do 
+            # Etiqueta simple para nombres (reemplaza . por p) #
+            b_num_bites="${num_bites//./p}"
 
-        # Limpiar logs anteriores
-        err_file="$log_err/${A}_${b_tag}.txt"
-        out_file="$log_out/${A}_${b_tag}.txt"
-        [ -f "$err_file" ] && rm "$err_file"
-        [ -f "$out_file" ] && rm "$out_file"
+            # Limpiar logs anteriores #
+            err_file="$log_err/${init_gen_div}_${b_num_bites}_${num_hum}_${mos_x_hum}.txt"
+            out_file="$log_out/${init_gen_div}_${b_num_bites}_${num_hum}_${mos_x_hum}.txt"
+            [ -f "$err_file" ] && rm "$err_file"
+            [ -f "$out_file" ] && rm "$out_file"
 
-        # Enviar trabajo al clúster (SGE/UGE)
-        qsub -cwd -l h_rt=100:00:00 -l h_vmem=10G -N "Run_${A}_${b_tag}" \
-            -e "$err_file" \
-            -o "$out_file" \
-            "$path_script" "$A" "$B"
+            # Enviar trabajo al clúster # 
+            qsub -cwd -l h_rt=100:00:00 -l h_vmem=10G \
+            -N "Run_${init_gen_div}_${b_num_bites}_${num_hum}_${mos_x_hum}" \
+            -e "$err_file" -o "$out_file" \
+            "$path_script" "$init_gen_div" "$num_bites" "$num_hum" "$mos_x_hum"
+            done
+        done
     done
 done
