@@ -6,14 +6,14 @@ path_script="./run.sh"
 
 # Listas de iteraciones #
 # lst_init_gen_div=('10' '30' '50' '75' '90')
-# lst_num_bites=('0.6' '0.7' '0.8' '0.9' '1' '1.2' '2' '3' '10' '40')
+# lst_num_bites=('0.1''0.3' '0.4' '0.8' '1.2' '2' '5' '10')
 # lst_num_hum=('30' '50' '70')
-# lst_mos_x_hum=('1' '3' '5')
+# lst_mos_x_hum=('1' '5' '10')
 
-lst_init_gen_div=('50')
-lst_num_bites=('1.2')
+lst_init_gen_div=('10' '30' '50' '75' '90')
+lst_num_bites=('0.1' '0.3' '0.4' '0.8' '1.2' '2' '5' '10')
 lst_num_hum=('50')
-lst_mos_x_hum=('1')
+lst_mos_x_hum=('5')
  
 # Carpetas de logs #
 log_err="./logs/logs_error"

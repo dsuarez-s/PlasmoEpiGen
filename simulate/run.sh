@@ -15,7 +15,7 @@ path_venv="/gsap/garage-protistvector/MalariaKmers/Malaria_Deep-mers/Virtual_Env
 source "$path_venv/bin/activate"
 
 # Number of iterations #
-total_it=10
+total_it=30
 for it_num in $(seq 1 "$total_it")
 do
     echo "Iteration $it_num of $total_it "
