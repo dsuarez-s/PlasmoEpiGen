@@ -4,17 +4,24 @@ set -e
 
 path_script="./run.sh"
 
-# Listas de iteraciones #
-# lst_init_gen_div=('10' '30' '50' '75' '90')
-# lst_num_bites=('0.1''0.3' '0.4' '0.8' '1.2' '2' '5' '10')
-# lst_num_hum=('30' '50' '70')
-# lst_mos_x_hum=('1' '5' '10')
-
+# Simulaciones Diciembre 19 #
 lst_init_gen_div=('10' '30' '50' '75' '90')
-lst_num_bites=('0.1' '0.3' '0.4' '0.8' '1.2' '2' '5' '10')
+lst_num_bites=('15' '20' '25' '30' '35' '40' '45')
 lst_num_hum=('50')
 lst_mos_x_hum=('5')
- 
+
+# Simulaciones Comparacion Humanos #
+# lst_init_gen_div=('50' '75' '90')
+# lst_num_bites=('2' '5' '10')
+# lst_num_hum=('30' '70')
+# lst_mos_x_hum=('5')
+
+# Simulaciones Comparacion Mosquitos #
+# lst_init_gen_div=('50' '75' '90')
+# lst_num_bites=('2' '5' '10')
+# lst_num_hum=('50')
+# lst_mos_x_hum=('3' '7')
+
 # Carpetas de logs #
 log_err="./logs/logs_error"
 log_out="./logs/logs_out"

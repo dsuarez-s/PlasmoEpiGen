@@ -10,45 +10,45 @@ def init_model_state(self, epi_parameters, pop_parameters,name_folder,
                      iteration, distribution, genomes, clone_distribution_human,
                      clone_distribution_mosquito, heapq):
     
-    self.genomes = genomes
-    self.event_queue = []            
-    heapq.heapify(self.event_queue)  
-    size_pool = len(genomes)
-    
-    # Step 1: Initialize model parameters #
+    # Paso 1: Inicializar los diccionarios requeridos #
     self.config = {"name_folder": name_folder, "distribution": distribution}
-
     self.IBD_humans_mean = {}
     self.IBD_humans_median = {}
     self.IBD_mosquitoes_mean = {}
     self.IBD_mosquitoes_median = {}
 
-    # Step 2: Initialize epidemiological  parameters #
+    # Paso 2: Inicializar parámetros epidemiológicos #
     epi_keys = ["sigma_h", "gamma", "delta", "alpha_H", "alpha_M", "sigma_v", "beta_hv", "beta_vh"]  
     self.epi = {key: val for key, val in zip(epi_keys, epi_parameters)}   
 
-    # Step 3: Time and state counters #
+    # Paso 3: Inicialización de contadores y estados de los agentes #
     self.actual_time = 0
     self.HS, self.HM, self.HPC = 0, 1, 2
     self.MS, self.MC, self.MPC = 3, 4, 5
 
-    # Step 4: Initiliaze Populations #  
+    # Paso 4: Inicializar el tamaño de las poblaciones de mosquitos y humanos #  
     self.num_mos = pop_parameters["Mos"]
     self.num_hum = pop_parameters["Hum"]        
 
-    # 1) Ruta de la carpeta y del archivo
+    # Paso 5: Inicializar la carpeta donde se guardarán los resultados #
     folder = self.config["name_folder"]
     os.makedirs(folder, exist_ok=True)
-
     fname = f'Iteration_{iteration}.txt'
     self.path = os.path.join(folder, fname)
 
-    # Event list and counters #
+    # Paso 6: Inicializar los eventos del sistema y los contadores de recombinación #
     self.events = ["lambda_humans", "lambda_mosquitoes", "toMS", "human_clearance"]
     self.generation_events = 0
     self.total_events = 0
-
-    # Genetic initialization #
+    self.total_events_infect = 0
+    self.infect_with_reco = 0
+    
+    # Paso 7: Inicializar  la lista de eventos por ocurrir #
+    self.event_queue = []            
+    heapq.heapify(self.event_queue)  
+    
+    # Paso 8: Inicializar los genomas y las matrices genéticas del sistema dada la arquitectura #
+    self.genomes = genomes
     init_genomes = initialize_genomes(genomes_dictionary = genomes,
                                       HM_code = self.HM, HS_code = self.HS, HPC_code = self.HPC,
                                       MC_code = self.MC, MPC_code = self.MPC, MS_code = self.MS,

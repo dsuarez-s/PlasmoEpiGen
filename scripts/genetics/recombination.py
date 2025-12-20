@@ -5,17 +5,22 @@ from scipy.sparse import vstack
 
 def recombination(inoculated_genomes, parasitic_populations,
                   immature_matrix, mature_matrix,
-                  total_events, generation_events, dist_loci):
+                  generation_events, dist_loci):
     
     # Check 1: Existen genomas para inocular #
     if len(inoculated_genomes) == 0:
             raise ValueError("No genomes inoculated for recombination")
     
+    # Check 2: La distribución tiene el mismo tamaño que los haplotipos #
+    haplotypes_len = len(parasitic_populations[0])
+    if len(dist_loci) != haplotypes_len:
+        raise ValueError(f"La distribución debe tener longitud {haplotypes_len}")
+    
     # Caso 1: Solo se inoculo un genoma, entonces no hay recombinación #
     if(len(inoculated_genomes) == 1):
         to_infect = inoculated_genomes.copy()
         return (parasitic_populations, immature_matrix, mature_matrix,
-                total_events, generation_events, to_infect)
+                generation_events, to_infect)
     
     # Caso 2: Se inoculó más de un genoma #  
     # Paso 1: Se crean las parejas de posibles recombinantes y se obtienen los esporozoitos #
@@ -25,15 +30,13 @@ def recombination(inoculated_genomes, parasitic_populations,
     sporozoites = list(set(oocy))
 
     # Paso 2: Se establece el número de eventos recombinatorios y se define el loci #
-    num_events = np.random.poisson(2)
+    num_events = np.random.poisson(2)    
     loci = list(np.random.choice(a=len(dist_loci), 
                                  size=min(num_events,len(dist_loci)), p=dist_loci, replace=False))
 
     # Paso 3: Se genera el proceso de recombinación para obtener los recombinantes #
     to_infect = []
-    for pair in sporozoites:
-        total_events += 1
-        
+    for pair in sporozoites:       
         # Caso 3.1: Ambos son iguales entonces no hay recombinación #
         if(pair[0] == pair[1]):
             to_infect.append(pair[0])
@@ -54,7 +57,7 @@ def recombination(inoculated_genomes, parasitic_populations,
         if existing.size > 0:
             idx = int(existing[0])
             to_infect.append(idx)
-            # Evento de Recombinación Nuevo #
+            # Evento de Recombinación #
             if (immature_matrix[existing].nnz  == 0) and (mature_matrix[existing].nnz == 0):
                 generation_events += 1
                 
@@ -69,4 +72,4 @@ def recombination(inoculated_genomes, parasitic_populations,
             generation_events += 1
                    
     return(parasitic_populations,
-           immature_matrix, mature_matrix,total_events, generation_events, to_infect)
+           immature_matrix, mature_matrix, generation_events, to_infect)

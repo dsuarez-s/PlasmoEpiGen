@@ -3,10 +3,10 @@ set -euo pipefail
 
 # Definir las variables a trabajar #
 python_script="simulate.execute_simulation"
-init_gen_div="$1"   # 10 - 30 - 50 - 75 - 90 #
-num_bites="$2"   # 0.6 - 0.7 - 0.8 - 0.9 - 1.0 - 1.2 - 2 - 3 - 10 - 40 #  
-num_hum="$3" # 30 - 50 - 70 #
-mos_x_hum="$4" # 1 - 3 - 5 #
+init_gen_div="$1"  
+num_bites="$2"   
+num_hum="$3" 
+mos_x_hum="$4" 
 
 cd /gsap/garage-protistvector/MalariaKmers/PlasmoEpiGen/
 

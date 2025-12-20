@@ -18,7 +18,7 @@ gamma = 30     # Recovery time of a human from infection [5] #
 delta = 20    # Lifespan of mosquitoes [4] #
 alpha_H = 11    # Maturation time of gametocytes in humans [2] #*
 alpha_M = 14    # Maturation time of sporozoites in mosquitoes [1] #*
-sigma_v = 3.1   # Rate of gonotrophic cycle (mosquito feeding cycle) [3] #
+sigma_v = 1/3.1   # Rate of gonotrophic cycle (mosquito feeding cycle) [3] #
 beta_hv = 0.2  # Probability of transmission from mosquito to human [5] #
 beta_vh = 0.07 # Probability of transmission from human to mosquito [5] #
 
@@ -48,7 +48,6 @@ elif (init_gen_div == 90):
     initial_genomes = {0: "A"*75, 1: "B"*75, 2: "C"*75, 3: "D"*75, 4: "E"*75,
                        5: "F"*75, 6: "G"*75, 7: "H"*75, 8: "I"*75, 9: "J"*75}
 
-    
 dist_humans = {0: 0.0, 1:1.0} 
 dist_mosquitoes = {0: 1.0} 
 epidemiological_parameters = [sigma_h, gamma, delta, alpha_H, alpha_M, sigma_v, beta_hv, beta_vh]    
@@ -62,10 +61,10 @@ model = MalariaEGModel(epi_parameters = epidemiological_parameters,
                        pop_parameters = population_parameters,
                        name_folder= name_fol,
                        iteration=iteration_name,
-                       distribution=[1/6] * 6,
+                       distribution=[1/len(initial_genomes[0])] * len(initial_genomes[0]),
                        genomes = initial_genomes,
                        clone_distribution_human = dist_humans,
                        clone_distribution_mosquito = dist_mosquitoes)
 # ------------------------------------------------------------------ #
-model.run(tmax=365*3)
+model.run(tmax=365*4)
 # ------------------------------------------------------------------ #      
