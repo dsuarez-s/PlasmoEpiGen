@@ -54,7 +54,7 @@ epidemiological_parameters = [sigma_h, gamma, delta, alpha_H, alpha_M, sigma_v, 
 population_parameters = {"Mos": num_hum*mos_x_hum , "Hum": num_hum}
 
 iteration_name = f"proof_{iter_number}"
-name_fol = f"test/results/IGD_{init_gen_div}_BR_{num_bites}_NH_{num_hum}_MxH_{mos_x_hum}"
+name_fol = f"test/results/Comparative_Simulations/IGD_{init_gen_div}_BR_{num_bites}_NH_{num_hum}_MxH_{mos_x_hum}"
 
 # ------------------------------------------------------------------ #
 model = MalariaEGModel(epi_parameters = epidemiological_parameters,

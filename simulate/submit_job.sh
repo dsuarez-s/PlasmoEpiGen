@@ -4,23 +4,17 @@ set -e
 
 path_script="./run.sh"
 
-# Simulaciones Diciembre 19 #
-lst_init_gen_div=('10' '30' '50' '75' '90')
-lst_num_bites=('0.1' '0.2' '0.3' '0.4' '0.6' '0.8' '1.0' '1.5' '2.0' '2.5' '3.0' '3.5' '4.0' '4.5' '5.0')
-lst_num_hum=('50')
-lst_mos_x_hum=('5')
-
-# Simulaciones Comparacion Humanos #
-# lst_init_gen_div=('50' '75' '90')
-# lst_num_bites=('2' '5' '10')
-# lst_num_hum=('30' '70')
+# Main Simulations - Dec. 19, 2025 #
+# lst_init_gen_div=('10' '30' '50' '75' '90')
+# lst_num_bites=('0.1' '0.2' '0.3' '0.4' '0.6' '0.8' '1.0' '1.5' '2.0' '2.5' '3.0')
+# lst_num_hum=('50')
 # lst_mos_x_hum=('5')
 
-# Simulaciones Comparacion Mosquitos #
-# lst_init_gen_div=('50' '75' '90')
-# lst_num_bites=('2' '5' '10')
-# lst_num_hum=('50')
-# lst_mos_x_hum=('3' '7')
+# Comparative Simulations - Mosquitoes and Humans #
+lst_init_gen_div=('10' '50' '90')
+lst_num_bites=('0.3' '1.0' '3.0')
+lst_num_hum=('30' '50' '70')
+lst_mos_x_hum=('3' '5' '7')
 
 # Carpetas de logs #
 log_err="./logs/logs_error"
