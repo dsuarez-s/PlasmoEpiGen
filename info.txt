@@ -1,0 +1,713 @@
+    1          )
+    2          if (
+    3              typical_iqr < 1e-12
+    4              and
+    5              median_range < 1e-12
+    6          ):
+    7              drift_ratio = 0.0
+    8              stable = True
+    9          elif typical_iqr < 1e-12:
+   10              drift_ratio = 999.0
+   11              stable = False
+   12          else:
+   13              drift_ratio = (
+   14                  median_range /
+   15                  typical_iqr
+   16              )
+   17              stable = (
+   18                  drift_ratio <= 1.0
+   19              )
+   20          if stable:
+   21              scenario_result[metric] = "YES"
+   22          else:
+   23              scenario_result[metric] = "NO"
+   24          scenario_result[
+   25              metric + "_ratio"
+   26          ] = drift_ratio
+   27      scenario_result["ALL"] = "YES"
+   28      for metric in METRICS:
+   29          if scenario_result[metric] != "YES":
+   30              scenario_result["ALL"] = "NO"
+   31      results.append(
+   32          scenario_result
+   33      )
+   34  print("")
+   35  print("LATE-TIME STOCHASTIC STABILITY")
+   36  print("Final 180 days, six 30-day blocks")
+   37  print("Stable if temporal drift <= typical stochastic IQR")
+   38  print("")
+   39  print(
+   40      "%-35s %5s %5s %5s %5s %5s %5s"
+   41      % (
+   42          "Scenario",
+   43          "Prev",
+   44          "MOI",
+   45          "PI",
+   46          "SH",
+   47          "Reco",
+   48          "ALL"
+   49      )
+   50  )
+   51  print("-" * 72)
+   52  for r in results:
+   53      print(
+   54          "%-35s %5s %5s %5s %5s %5s %5s"
+   55          % (
+   56              r["scenario"],
+   57              r["Prev"],
+   58              r["MOI"],
+   59              r["PI"],
+   60              r["SH"],
+   61              r["Reco"],
+   62              r["ALL"]
+   63          )
+   64      )
+   65  print("")
+   66  print("SUMMARY")
+   67  for metric in METRICS + ["ALL"]:
+   68      yes = sum(
+   69          1 for r in results
+   70          if r[metric] == "YES"
+   71      )
+   72      n = len(results)
+   73      print(
+   74          "%-5s : %d/%d = %.1f%% stable"
+   75          % (
+   76              metric,
+   77              yes,
+   78              n,
+   79              100.0 * yes / n
+   80          )
+   81      )
+   82  print("")
+   83  print("FAILED DETAILS")
+   84  for r in results:
+   85      for metric in METRICS:
+   86          if r[metric] == "NO":
+   87              print(
+   88                  "%s  %s  drift/IQR=%.3f"
+   89                  % (
+   90                      r["scenario"],
+   91                      metric,
+   92                      r[metric + "_ratio"]
+   93                  )
+   94              )
+   95  PY
+   96  python - <<'PY'
+   97  from __future__ import print_function
+   98  import os
+   99  import glob
+  100  import csv
+  101  BLOCK = 30.0
+  102  FINAL_REF = 180.0
+  103  CONSECUTIVE = 3
+  104  METRICS = ["Prev","MOI","PI","SH","Reco"]
+  105  def median(x):
+  106      x = sorted(x)
+  107      n = len(x)
+  108      if n == 0:
+  109          return None
+  110      if n % 2:
+  111          return x[n//2]
+  112      return (x[n//2-1] + x[n//2])/2.0
+  113  def percentile(x,p):
+  114      x = sorted(x)
+  115      n = len(x)
+  116      if n == 0:
+  117          return None
+  118      pos = (n-1)*p
+  119      lo = int(pos)
+  120      hi = lo+1
+  121      if hi >= n:
+  122          return x[lo]
+  123      f = pos-lo
+  124      return x[lo]*(1-f) + x[hi]*f
+  125  def iqr(x):
+  126      if len(x) == 0:
+  127          return None
+  128      return percentile(x,0.75)-percentile(x,0.25)
+  129  scenario_results = []
+  130  temporal_rows = []
+  131  for folder in sorted(glob.glob("IGD_*")):
+  132      if not os.path.isdir(folder):
+  133          continue
+  134      files = sorted(
+  135          glob.glob(
+  136              os.path.join(folder,"Iteration_proof_*.txt")
+  137          )
+  138      )
+  139      replicate_data = []
+  140      final_day = None
+  141      for fn in files:
+  142          rows = []
+  143          f = open(fn,"r")
+  144          reader = csv.DictReader(f,delimiter=";")
+  145          for z in reader:
+  146              try:
+  147                  t = float(z["time"])
+  148                  HS = float(z["HS"])
+  149                  HM = float(z["HM"])
+  150                  HPC = float(z["HPC"])
+  151                  total = HS+HM+HPC
+  152                  if total > 0:
+  153                      prev = (HM+HPC)/total
+  154                  else:
+  155                      prev = 0.0
+  156                  rows.append((
+  157                      t,
+  158                      prev,
+  159                      float(z["MOI_Humans_mean"]),
+  160                      float(z["PI_Humans"]),
+  161                      float(z["SH_Humans"]),
+  162                      float(z["ratio_reco"])
+  163                  ))
+  164              except:
+  165                  pass
+  166          f.close()
+  167          if len(rows) > 0:
+  168              rows.sort()
+  169              replicate_data.append(rows)
+  170              if final_day is None:
+  171                  final_day = rows[-1][0]
+  172      if final_day is None:
+  173          continue
+  174      nblocks = int(final_day/BLOCK)
+  175      block_stats = []
+  176      for b in range(nblocks):
+  177          start = b*BLOCK
+  178          end = start+BLOCK
+  179          vals = dict((m,[]) for m in METRICS)
+  180          for rows in replicate_data:
+  181              block = [
+  182                  x for x in rows
+  183                  if x[0] >= start and x[0] < end
+  184              ]
+  185              if len(block) == 0:
+  186                  continue
+  187              for i,m in enumerate(METRICS):
+  188                  col = i+1
+  189                  v = (
+  190                      sum(x[col] for x in block)
+  191                      /
+  192                      float(len(block))
+  193                  )
+  194                  vals[m].append(v)
+  195          stat = {
+  196              "start":start,
+  197              "end":end
+  198          }
+  199          for m in METRICS:
+  200              stat[m+"_median"] = median(vals[m])
+  201              stat[m+"_iqr"] = iqr(vals[m])
+  202          block_stats.append(stat)
+  203      ref_start = final_day-FINAL_REF
+  204      reference = {}
+  205      for m in METRICS:
+  206          final_medians = [
+  207              x[m+"_median"]
+  208              for x in block_stats
+  209              if (
+  210                  x["end"] > ref_start
+  211                  and
+  212                  x[m+"_median"] is not None
+  213              )
+  214          ]
+  215          final_iqrs = [
+  216              x[m+"_iqr"]
+  217              for x in block_stats
+  218              if (
+  219                  x["end"] > ref_start
+  220                  and
+  221                  x[m+"_iqr"] is not None
+  222              )
+  223          ]
+  224          reference[m] = {
+  225              "center":median(final_medians),
+  226              "spread":median(final_iqrs)
+  227          }
+  228      for stat in block_stats:
+  229          all_ok = True
+  230          for m in METRICS:
+  231              center = reference[m]["center"]
+  232              spread = reference[m]["spread"]
+  233              value = stat[m+"_median"]
+  234              if (
+  235                  center is None or
+  236                  spread is None or
+  237                  value is None
+  238              ):
+  239                  ok = False
+  240              elif spread < 1e-12:
+  241                  ok = abs(value-center) < 1e-12
+  242              else:
+  243                  ok = abs(value-center) <= spread
+  244              stat[m+"_stable"] = ok
+  245              if not ok:
+  246                  all_ok = False
+  247          stat["ALL_stable"] = all_ok
+  248      stable_times = {}
+  249      for metric in METRICS + ["ALL"]:
+  250          key = metric+"_stable"
+  251          found = None
+  252          for i in range(
+  253              len(block_stats)-CONSECUTIVE+1
+  254          ):
+  255              good = True
+  256              for j in range(CONSECUTIVE):
+  257                  if not block_stats[i+j][key]:
+  258                      good = False
+  259                      break
+  260              if not good:
+  261                  continue
+  262              later = [
+  263                  x[key]
+  264                  for x in block_stats[i:]
+  265              ]
+  266              pct = (
+  267                  100.0 *
+  268                  sum(1 for x in later if x)
+  269                  /
+  270                  float(len(later))
+  271              )
+  272              if pct >= 90.0:
+  273                  found = block_stats[i]["start"]
+  274                  break
+  275          stable_times[metric] = found
+  276      result = {
+  277          "scenario":folder
+  278      }
+  279      for m in METRICS + ["ALL"]:
+  280          result[m] = stable_times[m]
+  281      scenario_results.append(result)
+  282      for stat in block_stats:
+  283          temporal_rows.append({
+  284              "scenario":folder,
+  285              "day":stat["end"],
+  286              "year":stat["end"]/365.0,
+  287              "Prev_median":stat["Prev_median"],
+  288              "Prev_IQR":stat["Prev_iqr"],
+  289              "MOI_median":stat["MOI_median"],
+  290              "MOI_IQR":stat["MOI_iqr"],
+  291              "PI_median":stat["PI_median"],
+  292              "PI_IQR":stat["PI_iqr"],
+  293              "SH_median":stat["SH_median"],
+  294              "SH_IQR":stat["SH_iqr"],
+  295              "Reco_median":stat["Reco_median"],
+  296              "Reco_IQR":stat["Reco_iqr"],
+  297              "ALL_stable":
+  298                  "YES"
+  299                  if stat["ALL_stable"]
+  300                  else "NO"
+  301          })
+  302  print("")
+  303  print("ESTIMATED TIME TO LATE-TIME STATIONARITY")
+  304  print("")
+  305  print(
+  306      "%-35s %7s %7s %7s %7s %7s %7s"
+  307      % (
+  308          "Scenario",
+  309          "Prev",
+  310          "MOI",
+  311          "PI",
+  312          "SH",
+  313          "Reco",
+  314          "ALL"
+  315      )
+  316  )
+  317  for r in scenario_results:
+  318      values = []
+  319      for m in METRICS + ["ALL"]:
+  320          if r[m] is None:
+  321              values.append("NA")
+  322          else:
+  323              values.append(
+  324                  "%.2fy" % (r[m]/365.0)
+  325              )
+  326      print(
+  327          "%-35s %7s %7s %7s %7s %7s %7s"
+  328          % (
+  329              r["scenario"],
+  330              values[0],
+  331              values[1],
+  332              values[2],
+  333              values[3],
+  334              values[4],
+  335              values[5]
+  336          )
+  337      )
+  338  all_times = [
+  339      r["ALL"]/365.0
+  340      for r in scenario_results
+  341      if r["ALL"] is not None
+  342  ]
+  343  print("")
+  344  print("SUMMARY")
+  345  print(
+  346      "Scenarios with estimated stabilization time: %d/%d"
+  347      % (
+  348          len(all_times),
+  349          len(scenario_results)
+  350      )
+  351  )
+  352  if len(all_times) > 0:
+  353      print(
+  354          "Earliest overall stabilization: %.2f years"
+  355          % min(all_times)
+  356      )
+  357      print(
+  358          "Median overall stabilization: %.2f years"
+  359          % median(all_times)
+  360      )
+  361      print(
+  362          "Latest overall stabilization: %.2f years"
+  363          % max(all_times)
+  364      )
+  365  fields = [
+  366      "scenario",
+  367      "day",
+  368      "year",
+  369      "Prev_median",
+  370      "Prev_IQR",
+  371      "MOI_medi
+  372      "MOI_IQR",
+  373      "PI_median",
+  374      "PI_IQR",
+  375      "SH_median",
+  376      "SH_IQR",
+  377      "Reco_median",
+  378      "Reco_IQR",
+  379      "ALL_stable"
+  380  ]
+  381  f = open(
+  382      "tempor
+  383      "wb"
+  384  )
+  385  writer = csv.DictWriter(
+  386      f,
+  387      fieldnames=fields,
+  388      extrasaction="ignore"
+  389  )
+  390  writer.writeheader()
+  391  for row in temporal_rows:
+  392      writer.writerow(row)
+  393  f.close()
+  394  print("")
+  395  print("Saved: temporal_stationarity.csv")
+  396  PY
+  397  clear
+  398  python - <<'PY'
+  399  from __future__ import print_function
+  400  import os
+  401  import glob
+  402  import csv
+  403  BLOCK = 30.0
+  404  FINAL_REF = 180.0
+  405  CONSECUTIVE = 3
+  406  METRICS = ["Prev","MOI","PI","SH","Reco"]
+  407  def median(x):
+  408      x = sorted(x)
+  409      n = len(x)
+  410      if n == 0:
+  411          return None
+  412      if n % 2:
+  413          return x[n//2]
+  414      return (x[n//2-1] + x[n//2])/2.0
+  415  def percentile(x,p):
+  416      x = sorted(x)
+  417      n = len(x)
+  418      if n == 0:
+  419          return None
+  420      pos = (n-1)*p
+  421      lo = int(pos)
+  422      hi = lo+1
+  423      if hi >= n:
+  424          return x[lo]
+  425      f = pos-lo
+  426      return x[lo]*(1-f) + x[hi]*f
+  427  def iqr(x):
+  428      if len(x) == 0:
+  429          return None
+  430      return percentile(x,0.75)-percentile(x,0.25)
+  431  scenario_results = []
+  432  temporal_rows = []
+  433  for folder in sorted(glob.glob("IGD_*")):
+  434      if not os.path.isdir(folder):
+  435          continue
+  436      files = sorted(
+  437          glob.glob(
+  438              os.path.join(folder,"Iteration_proof_*.txt")
+  439          )
+  440      )
+  441      replicate_data = []
+  442      final_day = None
+  443      for fn in files:
+  444          rows = []
+  445          f = open(fn,"r")
+  446          reader = csv.DictReader(f,delimiter=";")
+  447          for z in reader:
+  448              try:
+  449                  t = float(z["time"])
+  450                  HS = float(z["HS"])
+  451                  HM = float(z["HM"])
+  452                  HPC = float(z["HPC"])
+  453                  total = HS+HM+HPC
+  454                  if total > 0:
+  455                      prev = (HM+HPC)/total
+  456                  else:
+  457                      prev = 0.0
+  458                  rows.append((
+  459                      t,
+  460                      prev,
+  461                      float(z["MOI_Humans_mean"]),
+  462                      float(z["PI_Humans"]),
+  463                      float(z["SH_Humans"]),
+  464                      float(z["ratio_reco"])
+  465                  ))
+  466              except:
+  467                  pass
+  468          f.close()
+  469          if len(rows) > 0:
+  470              rows.sort()
+  471              replicate_data.append(rows)
+  472              if final_day is None:
+  473                  final_day = rows[-1][0]
+  474      if final_day is None:
+  475          continue
+  476      nblocks = int(final_day/BLOCK)
+  477      block_stats = []
+  478      for b in range(nblocks):
+  479          start = b*BLOCK
+  480          end = start+BLOCK
+  481          vals = dict((m,[]) for m in METRICS)
+  482          for rows in replicate_data:
+  483              block = [
+  484                  x for x in rows
+  485                  if x[0] >= start and x[0] < end
+  486              ]
+  487              if len(block) == 0:
+  488                  continue
+  489              for i,m in enumerate(METRICS):
+  490                  col = i+1
+  491                  v = (
+  492                      sum(x[col] for x in block)
+  493                      /
+  494                      float(len(block))
+  495                  )
+  496                  vals[m].append(v)
+  497          stat = {
+  498              "start":start,
+  499              "end":end
+  500          }
+  501          for m in METRICS:
+  502              stat[m+"_median"] = median(vals[m])
+  503              stat[m+"_iqr"] = iqr(vals[m])
+  504          block_stats.append(stat)
+  505      ref_start = final_day-FINAL_REF
+  506      reference = {}
+  507      for m in METRICS:
+  508          final_medians = [
+  509              x[m+"_median"]
+  510              for x in block_stats
+  511              if (
+  512                  x["end"] > ref_start
+  513                  and
+  514                  x[m+"_median"] is not None
+  515              )
+  516          ]
+  517          final_iqrs = [
+  518              x[m+"_iqr"]
+  519              for x in block_stats
+  520              if (
+  521                  x["end"] > ref_start
+  522                  and
+  523                  x[m+"_iqr"] is not None
+  524              )
+  525          ]
+  526          reference[m] = {
+  527              "center":median(final_medians),
+  528              "spread":median(final_iqrs)
+  529          }
+  530      for stat in block_stats:
+  531          all_ok = True
+  532          for m in METRICS:
+  533              center = reference[m]["center"]
+  534              spread = reference[m]["spread"]
+  535              value = stat[m+"_median"]
+  536              if (
+  537                  center is None or
+  538                  spread is None or
+  539                  value is None
+  540              ):
+  541                  ok = False
+  542              elif spread < 1e-12:
+  543                  ok = abs(value-center) < 1e-12
+  544              else:
+  545                  ok = abs(value-center) <= spread
+  546              stat[m+"_stable"] = ok
+  547              if not ok:
+  548                  all_ok = False
+  549          stat["ALL_stable"] = all_ok
+  550      stable_times = {}
+  551      for metric in METRICS + ["ALL"]:
+  552          key = metric+"_stable"
+  553          found = None
+  554          for i in range(
+  555              len(block_stats)-CONSECUTIVE+1
+  556          ):
+  557              good = True
+  558              for j in range(CONSECUTIVE):
+  559                  if not block_stats[i+j][key]:
+  560                      good = False
+  561                      break
+  562              if not good:
+  563                  continue
+  564              later = [
+  565                  x[key]
+  566                  for x in block_stats[i:]
+  567              ]
+  568              pct = (
+  569                  100.0 *
+  570                  sum(1 for x in later if x)
+  571                  /
+  572                  float(len(later))
+  573              )
+  574              if pct >= 90.0:
+  575                  found = block_stats[i]["start"]
+  576                  break
+  577          stable_times[metric] = found
+  578      result = {
+  579          "scenario":folder
+  580      }
+  581      for m in METRICS + ["ALL"]:
+  582          result[m] = stable_times[m]
+  583      scenario_results.append(result)
+  584      for stat in block_stats:
+  585          temporal_rows.append({
+  586              "scenario":folder,
+  587              "day":stat["end"],
+  588              "year":stat["end"]/365.0,
+  589              "Prev_median":stat["Prev_median"],
+  590              "Prev_IQR":stat["Prev_iqr"],
+  591              "MOI_median":stat["MOI_median"],
+  592              "MOI_IQR":stat["MOI_iqr"],
+  593              "PI_median":stat["PI_median"],
+  594              "PI_IQR":stat["PI_iqr"],
+  595              "SH_median":stat["SH_median"],
+  596              "SH_IQR":stat["SH_iqr"],
+  597              "Reco_median":stat["Reco_median"],
+  598              "Reco_IQR":stat["Reco_iqr"],
+  599              "ALL_stable":
+  600                  "YES"
+  601                  if stat["ALL_stable"]
+  602                  else "NO"
+  603          })
+  604  print("")
+  605  print("ESTIMATED TIME TO LATE-TIME STATIONARITY")
+  606  print("")
+  607  print(
+  608      "%-35s %7s %7s %7s %7s %7s %7s"
+  609      % (
+  610          "Scenario",
+  611          "Prev",
+  612          "MOI",
+  613          "PI",
+  614          "SH",
+  615          "Reco",
+  616          "ALL"
+  617      )
+  618  )
+  619  for r in scenario_results:
+  620      values = []
+  621      for m in METRICS + ["ALL"]:
+  622          if r[m] is None:
+  623              values.append("NA")
+  624          else:
+  625              values.append(
+  626                  "%.2fy" % (r[m]/365.0)
+  627              )
+  628      print(
+  629          "%-35s %7s %7s %7s %7s %7s %7s"
+  630          % (
+  631              r["scenario"],
+  632              values[0],
+  633              values[1],
+  634              values[2],
+  635              values[3],
+  636              values[4],
+  637              values[5]
+  638          )
+  639      )
+  640  all_times = [
+  641      r["ALL"]/365.0
+  642      for r in scenario_results
+  643      if r["ALL"] is not None
+  644  ]
+  645  print("")
+  646  print("SUMMARY")
+  647  print(
+  648      "Scenarios with estimated stabilization time: %d/%d"
+  649      % (
+  650          len(all_times),
+  651          len(scenario_results)
+  652      )
+  653  )
+  654  if len(all_times) > 0:
+  655      print(
+  656          "Earliest overall stabilization: %.2f years"
+  657          % min(all_times)
+  658      )
+  659      print(
+  660          "Median overall stabilization: %.2f years"
+  661          % median(all_times)
+  662      )
+  663      print(
+  664          "Latest overall stabilization: %.2f years"
+  665          % max(all_times)
+  666      )
+  667  fields = [
+  668      "scenario",
+  669      "day",
+  670      "year",
+  671      "Prev_median",
+  672      "Prev_IQR",
+  673      "MOI_median",
+  674      "MOI_IQR",
+  675      "PI_median",
+  676      "PI_IQR",
+  677      "SH_median",
+  678      "SH_IQR",
+  679      "Reco_median",
+  680      "Reco_IQR",
+  681      "ALL_stable"
+  682  ]
+  683  f = open(
+  684      "temporal_stationarity.csv",
+  685      "wb"
+  686  )
+  687  writer = csv.DictWriter(
+  688      f,
+  689      fieldnames=fields,
+  690      extrasaction="ignore"
+  691  )
+  692  writer.writeheader()
+  693  for row in temporal_rows:
+  694      writer.writerow(row)
+  695  f.close()
+  696  print("")
+  697  print("Saved: temporal_stationarity.csv")
+  698  PY
+  699  find /gsap/garage-protistvector/MalariaKmers/ -type f -size +30G -print
+  700  find /gsap/garage-protistvector/MalariaKmers/ -type f -size +30G -exec du -h {} \; | sort -hr
+  701  clear
+  702  find /gsap/garage-protistvector/MalariaKmers/ -type f -size +30G -printf '%s\t%p\n' | sort -nr | numfmt --field=1 --to=iec-i --suffix=B
+  703  use UGER
+  704  ish -l h_vmem=20G
+  705  cd /gsap/garage-protistvector/
+  706  ls
+  707  cd MalariaKmers/
+  708  cd PlasmoEpiGen/
+  709  clear
+  710  ls
+  711  git status
+  712  history
+  713  history > info.txt
